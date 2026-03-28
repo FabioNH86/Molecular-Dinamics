@@ -1,9 +1,9 @@
 /* ========================================================================== */                                                                        
 /*   mie.c                                                                    */
 /*   11 de Junio del 2016                                                     */
-/*   Luis Adri√°n Padilla Salas                                                */
+/*   Luis Adri·n Padilla Salas                                                */
 /*                                                                            */
-/*   Este programa es una rutina de DinÔøΩmica Molecular (con OMP)              */
+/*   Este programa es una rutina de Din·mica Molecular (con OMP)              */
 /*   para un potencial efectivo tipo Mie(n, m)                                */
 /*   con termostato y barostato de Berendsen                                  */
 /*   correcciones de largo alcance y n dimensiones (1, 2 y 3).                */
@@ -36,7 +36,7 @@ double *boxy, double *boxz);
 void guardar_configuracion(int nat, double boxx, double boxy, double boxz,
 double rx[], double ry[], double rz[], double vx[], double vy[], double vz[]);
 
-void fuerza(int nat, int dofx, double coef, double urc, double rcut, double durc, 
+void fuerza(int nat, int dofx, double coef, double urc, double rcut, 
 double *epi, double rx[], double ry[], double rz[], double boxx, double boxy, 
 double boxz, double fx[], double fy[], double fz[], double expn, double expm, 
 double *wxxr, double *wyyr, double *wzzr);
@@ -61,7 +61,7 @@ int main(void)
 {
 double amasa, pi, coef, ntot, ladomenor, time, timeh, rho, temp, rcut;
 double presion, taup, taut, sumrho, promrho;
-double boxx, boxy, boxz, deltar, ulr, plr, urc, snrc, smrc, epi, eki, tempi, durc;
+double boxx, boxy, boxz, deltar, ulr, plr, urc, snrc, smrc, epi, eki, tempi;
 double eti, presi, virk, virr, wxxr, wyyr, wzzr, eto, error;
 double wxxv, wyyv, wzzv, pxx, pyy, pzz;
 double epilr, etilr, presilr, sumek, sumep, sumt, sump, promek, promep;
@@ -82,26 +82,25 @@ todo = fopen("todo.dat", "w");
 presiones = fopen("presiones.dat", "w");
 
 /* Leemos las variables del archivo de entrada in.dat    */
-
-fscanf(in, "%d %s", &ncolectivo, trash); /* Se selecciona el colectivo  */
-fscanf(in, "%d %s", &nopcion, trash); /* Se selecciona si el programa contin√∫a o inciai por primera vez  */
-fscanf(in, "%d %s", &dofx, trash); /* Cantidad de dimensiones a trabajar   */
-fscanf(in, "%lf %s", &expn, trash); /* Exponente de parte repulsiva de potencial LJ */
-fscanf(in, "%lf %s", &expm, trash); /* Exponente de parte atractiva de LJ  */
-fscanf(in, "%lf %s", &time, trash); /* Tiempo de integraci√≥n   */
-fscanf(in, "%lf %lf %lf %s", &boxx, &boxy, &boxz, trash); /* Lados de la caja de simulaci√≥n (Lx, Ly, Lz) */
-fscanf(in, "%d %d %d %s", &ndivx, &ndivy, &ndivz, trash); /* N√∫mero de √°tomos por lado de la caja (nx, ny, nz) */
-fscanf(in, "%lf %s", &temp, trash); /* Temperatura para asignar velocidades   */
-fscanf(in, "%lf %s", &taut, trash); /* Constante temporal para termostato de Berendsen */
-fscanf(in, "%lf %s", &presion, trash); /* Presi√≥n para presostato */
-fscanf(in, "%lf %s", &taup, trash); /* Constante temporal para presostato de Berendsen */
-fscanf(in, "%lf %s", &rcut, trash); /* r de corte del pootencial (Menor a la mitad de la caja)  */
-fscanf(in, "%d %s", &nconfequi, trash); /* N√∫mero de configuraciones para equilibrar   */
-fscanf(in, "%d %s", &nconf, trash); /* N√∫mero de configuraciones  */
-fscanf(in, "%d %s", &nperfil, trash); /* Frecuencia para calcular las configuraciones  */
-fscanf(in, "%lf %s", &deltar, trash); /* Ancho del intervalo para el perfil de densidad   */
-fscanf(in, "%d %s", &nmovie, trash); /* Frecuencia de fotos para pel√≠cula de GROMACS*/
-fscanf(in, "%d %s", &nprint, trash); /* Frecuencia para imprimir en terminal*/
+fscanf(in, "%d %s", &ncolectivo, trash);
+fscanf(in, "%d %s", &nopcion, trash);
+fscanf(in, "%d %s", &dofx, trash);
+fscanf(in, "%lf %s", &expn, trash);
+fscanf(in, "%lf %s", &expm, trash);
+fscanf(in, "%lf %s", &time, trash);
+fscanf(in, "%lf %lf %lf %s", &boxx, &boxy, &boxz, trash);
+fscanf(in, "%d %d %d %s", &ndivx, &ndivy, &ndivz, trash);
+fscanf(in, "%lf %s", &temp, trash);
+fscanf(in, "%lf %s", &taut, trash);
+fscanf(in, "%lf %s", &presion, trash);
+fscanf(in, "%lf %s", &taup, trash);
+fscanf(in, "%lf %s", &rcut, trash);
+fscanf(in, "%d %s", &nconfequi, trash);
+fscanf(in, "%d %s", &nconf, trash);
+fscanf(in, "%d %s", &nperfil, trash);
+fscanf(in, "%lf %s", &deltar, trash);
+fscanf(in, "%d %s", &nmovie, trash);
+fscanf(in, "%d %s", &nprint, trash);   
 
 ndist = round((nconf - nconfequi) / nperfil);
 
@@ -138,7 +137,7 @@ printf("Movimientos para promediar: %d \n", nconf-nconfequi);
 fprintf(resumen, "Movimientos para promediar: %d \n", nconf-nconfequi);
 
 /* Se comprueba que la distancia de corte sea menor que la mitad del lado mas
-pequeÔøΩo de la caja */
+pequeÒo de la caja */
 if (dofx == 3){
    if (boxx < boxy){
    ladomenor = boxx;
@@ -225,11 +224,8 @@ snrc = pow((1.0 / rcut), expn);
 smrc = pow((1.0 / rcut), expm);
 urc = coef * (snrc - smrc);
 
-// NUEVO: Derivada del potencial en el corte V'(rc)
-durc = coef * (expm * smrc - expn * snrc) / rcut;
-
-/* Calculamos la fuerza inicial sobre las partÔøΩculas a t=0 */
-fuerza(nat, dofx, coef, urc, rcut, durc, &epi, rx, ry, rz, boxx, boxy, boxz, fx, fy,
+/* Calculamos la fuerza inicial sobre las partÌculas a t=0 */
+fuerza(nat, dofx, coef, urc, rcut, &epi, rx, ry, rz, boxx, boxy, boxz, fx, fy,
 fz, expn, expm, &wxxr, &wyyr, &wzzr);
 
 /* Iniciamos variables para promediar */
@@ -287,7 +283,7 @@ for(iconf=1 ; iconf<=nconf ; iconf++){
    }
    
    /* Calculamos la fuerza al tiempo dt */
-   fuerza(nat, dofx, coef, urc, rcut, durc, &epi, rx, ry, rz, boxx, boxy, boxz, fx,
+   fuerza(nat, dofx, coef, urc, rcut, &epi, rx, ry, rz, boxx, boxy, boxz, fx,
    fy, fz, expn, expm, &wxxr, &wyyr, &wzzr);
 
    /* Calculamos las velocidades al tiempo dt */
@@ -315,7 +311,7 @@ for(iconf=1 ; iconf<=nconf ; iconf++){
    eti = eki + epi;
    tempi = 2.0 * eki / dofx;
    
-   /* Calculamos el error relativo en la energÔøΩa total */
+   /* Calculamos el error relativo en la energÌa total */
    if (iconf == 1){
       eto = eti;
    }
@@ -406,7 +402,7 @@ fprintf(resumen, "Energia Potencial: %.6lf \n", promep);
 fprintf(resumen, "Temperatura: %.6lf \n", promt);
 fprintf(resumen, "Presion: %.6lf \n", promp);
 
-/* Guardamos la configuraciÔøΩn final de las particulas */
+/* Guardamos la configuraciÛn final de las particulas */
 guardar_configuracion(nat, boxx, boxy, boxz, rx, ry, rz, vx, vy, vz);  
 
 return 0;
@@ -516,8 +512,8 @@ double vx[], double vy[], double vz[])
 int i;
 double rtemp, sumx, sumy, sumz, uk, tempi, dof, prueba;
 
-/* Asignamos velocidades a las partÔøΩculas de acuerdo a la equiparticiÔøΩn de
-la energÔøΩa y con distribuciÔøΩn gaussiana */
+/* Asignamos velocidades a las partÌculas de acuerdo a la equiparticiÛn de
+la energÌa y con distribuciÛn gaussiana */
 if (dofx == 3){
    for(i=1; i<=nat ; i++){
       rtemp = sqrt(temp / amasa);
@@ -572,7 +568,7 @@ printf("Temperatura Inicial: %lf \n", tempi);
 return; 
 }
 
-/* Esta funciÔøΩn convierte aleatorios uniformemente distribuidos en aleatorios 
+/* Esta funciÛn convierte aleatorios uniformemente distribuidos en aleatorios 
 gaussianamente distribuidos con distribucion normal */
 double gauss(void)
 {
@@ -591,7 +587,7 @@ rgauss = ((((a9 * r2 + a7) * r2 + a5) * r2 + a3) * r2 + a1) * r;
 return rgauss;
 }
 
-/* Esta funciÔøΩn crea numeros aleatorios uniformemente distribuidos */
+/* Esta funciÛn crea numeros aleatorios uniformemente distribuidos */
 double aleatorio_uniforme(void)
 {
 int l = 5, c = 1;
@@ -613,7 +609,7 @@ int i, fnat;
 double fboxx, fboxy, fboxz, frho;
 FILE *xyz;
 
-/* Leemos el numero de particulas, tamaÔøΩo de la caja y calculamos rho */
+/* Leemos el numero de particulas, tamaÒo de la caja y calculamos rho */
 xyz = fopen("xyz.dat", "r");
 printf("Leyendo la configuracion inicial...\n");
 fscanf(xyz, "%d", &fnat);
@@ -670,7 +666,7 @@ return;
 }
 
 /* Calculamos la fuerza entre particulas */
-void fuerza(int nat, int dofx, double coef, double urc, double rcut, double durc,
+void fuerza(int nat, int dofx, double coef, double urc, double rcut, 
 double *epi, double rx[], double ry[], double rz[], double boxx, double boxy, 
 double boxz, double fx[], double fy[], double fz[], double expn, double expm, 
 double *wxxr, double *wyyr, double *wzzr)
@@ -713,16 +709,8 @@ if (dofx == 3){
          if (rij <= rcut){
             sn = pow((1.0 / rij), expn);
             sm = pow((1.0 / rij), expm);
-
-            uij = (coef * (sn - sm)) - urc - durc * (rij - rcut);
-
-            // double duij_puro = coef * (expm * sm - expn * sn ) / rij;
-            // duij = duij_puro - durc;
-
-            uij = coef * (sn - sm) - urc; 
+            uij = coef * (sn - sm) - urc;
             duij = coef * (expm * sm - expn * sn) / rij;
-
-
             /* Acumulamos la fuerza, potencial y el virial */
             fxij = - (duij * dx / rij);
             fyij = - (duij * dy / rij);
@@ -862,7 +850,7 @@ else if (dofx == 1){
    pow(rcut,(expn-1.0))) - expm / ((expm-1.0) * pow(rcut,(expm-1.0))));
 }
    
-*ulr = 2.0 * u; 
+*ulr = 2.0 * u;
 *plr = p;
 
 return;
@@ -916,7 +904,7 @@ if (ncolectivo == 3){
       rx[i] = rx[i] * factor2;
       ry[i] = ry[i] * factor2;
       rz[i] = rz[i] * factor2;
-   }
+   } 
       
    if(dofx == 3){
       *rho = nat / (bx * by * bz);
