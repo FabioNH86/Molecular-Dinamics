@@ -4,9 +4,9 @@
 12.0      expn_exponente_para_la_parte_repulsiva_12_para_LJ
 6.0       expm_exponente_para_la_parte_atractiva_6_en_general
 0.005    time_tiempo_de_integracion
-10.0 10.0 10.0  Lx_Ly_Lz_en_unidades_reducidas
+40.0 10.0 10.0  Lx_Ly_Lz_en_unidades_reducidas
 10 10 10  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
-6.00      temp_en_unidades_reducidas_para_asignar_velocidades
+0.60      temp_en_unidades_reducidas_para_asignar_velocidades
 0.01      taut_para_termostato_berendsen
 0.0       presion_en_unidades_reducidas_para_presostato
 0.0       taup_para_presostato_berendsen

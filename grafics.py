@@ -21,8 +21,8 @@ error       = todo[7]
 
 n: int = 3 # <----- SELECCIONA LA PROPIEDAD A ANALIZAR
 
-mean_potential_reported = -5.44
-mean_pressure_reported = 4.254
+# mean_potential_reported = -5.44
+# mean_pressure_reported = 4.254
 
 # Parámetro de corte para la fase de equilibración
 salto: int = 5000
@@ -38,7 +38,7 @@ axs[0, 0].set_ylabel('Energía')
 
 # Panel 2: Energía Potencial (Fase inicial)
 axs[0, 1].plot(config[:salto], potential_e[:salto], color='tab:red')
-axs[0, 1].axhline(y=mean_potential_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
+#axs[0, 1].axhline(y=mean_potential_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
 axs[0, 1].set_title('Energía Potencial (Equilibración)')
 axs[0, 1].set_xlabel('Configuración')
 axs[0, 1].set_ylabel('U / ε')
@@ -53,7 +53,7 @@ axs[1, 0].set_ylabel('Energía')
 # Panel 4: Variación de la Presión (Toda la simulación)
 axs[1, 1].plot(config, pressure, color='tab:green')
 axs[1, 1].set_title('Evolución de la Densidad')
-axs[1, 1].axhline(y=mean_pressure_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
+#axs[1, 1].axhline(y=mean_pressure_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
 axs[1, 1].set_xlabel('Configuración')
 
 # --- FIGURA 2: HISTOGRAMA DE EQUILIBRIO DE ENERGÍA POTENCIAL ---
@@ -69,7 +69,7 @@ plt.hist(fase_produccion, bins=40, color='skyblue', edgecolor='black', alpha=0.7
 plt.axvline(mean, color='red', linestyle='dashed', linewidth=1.5, label=f'Promedio: {mean:.4f}')
 plt.axvline(mean + sigma, color='gray', linestyle='dotted', label=f'1 $\sigma$: {sigma:.4f}')
 plt.axvline(mean - sigma, color='gray', linestyle='dotted')
-plt.axvline(mean_potential_reported, color='black', linestyle='dotted', label=f'Valor reportado en NIST: {mean_potential_reported}')
+#plt.axvline(mean_potential_reported, color='black', linestyle='dotted', label=f'Valor reportado en NIST: {mean_potential_reported}')
 
 plt.xlabel('Energía potencial')
 plt.ylabel('Frecuencia')
@@ -91,7 +91,7 @@ plt.hist(fase_produccion_p, bins=40, color='lightgreen', edgecolor='black', alph
 plt.axvline(mean_p, color='red', linestyle='dashed', linewidth=1.5, label=f'Promedio: {mean_p:.4f}')
 plt.axvline(mean_p + sigma_p, color='gray', linestyle='dotted', label=f'1 $\sigma$: {sigma_p:.4f}')
 plt.axvline(mean_p - sigma_p, color='gray', linestyle='dotted')
-plt.axvline(mean_pressure_reported, color='black', linestyle='dotted', label=f'Valor reportado en NIST: {mean_pressure_reported}')
+#plt.axvline(mean_pressure_reported, color='black', linestyle='dotted', label=f'Valor reportado en NIST: {mean_pressure_reported}')
 
 plt.xlabel('Presión')
 plt.ylabel('Frecuencia')
@@ -163,7 +163,7 @@ promedio_sim = np.mean(promedios)
 plt.axhline(y=promedio_sim, color='red', linestyle='--', alpha=0.7, label=f'Promedio Global: {promedio_sim:.4f}')
 
 # Línea de Referencia NIST (Asegúrate que sea el valor de Energía: -0.08455)
-plt.axhline(y=mean_potential_reported, color='black', linestyle=':', linewidth=2, label=f'Referencia NIST: {mean_potential_reported}')
+#plt.axhline(y=mean_potential_reported, color='black', linestyle=':', linewidth=2, label=f'Referencia NIST: {mean_potential_reported}')
 
 # Ajuste de escala para que se vean los bloques de cerca
 # Si el valor de NIST está muy lejos, esto permitirá ver tus datos claramente
