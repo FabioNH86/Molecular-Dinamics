@@ -1,9 +1,9 @@
 /* ========================================================================== */                                                                        
 /*   mie.c                                                                    */
 /*   11 de Junio del 2016                                                     */
-/*   Luis Adrián Padilla Salas                                                */
+/*   Luis Adriï¿½n Padilla Salas                                                */
 /*                                                                            */
-/*   Este programa es una rutina de Dinámica Molecular (con OMP)              */
+/*   Este programa es una rutina de Dinï¿½mica Molecular (con OMP)              */
 /*   para un potencial efectivo tipo Mie(n, m)                                */
 /*   con termostato y barostato de Berendsen                                  */
 /*   correcciones de largo alcance y n dimensiones (1, 2 y 3).                */
@@ -98,7 +98,7 @@ fscanf(in, "%lf %s", &rcut, trash);
 fscanf(in, "%d %s", &nconfequi, trash);
 fscanf(in, "%d %s", &nconf, trash);
 fscanf(in, "%d %s", &nperfil, trash);
-fscanf(in, "%lf %s", &deltar, trash);
+fscanf(in, "%lf %s", &deltar, trash); // Perfil de densidad
 fscanf(in, "%d %s", &nmovie, trash);
 fscanf(in, "%d %s", &nprint, trash);   
 
@@ -137,7 +137,7 @@ printf("Movimientos para promediar: %d \n", nconf-nconfequi);
 fprintf(resumen, "Movimientos para promediar: %d \n", nconf-nconfequi);
 
 /* Se comprueba que la distancia de corte sea menor que la mitad del lado mas
-pequeño de la caja */
+pequeï¿½o de la caja */
 if (dofx == 3){
    if (boxx < boxy){
    ladomenor = boxx;
@@ -224,7 +224,7 @@ snrc = pow((1.0 / rcut), expn);
 smrc = pow((1.0 / rcut), expm);
 urc = coef * (snrc - smrc);
 
-/* Calculamos la fuerza inicial sobre las partículas a t=0 */
+/* Calculamos la fuerza inicial sobre las partï¿½culas a t=0 */
 fuerza(nat, dofx, coef, urc, rcut, &epi, rx, ry, rz, boxx, boxy, boxz, fx, fy,
 fz, expn, expm, &wxxr, &wyyr, &wzzr);
 
@@ -311,7 +311,7 @@ for(iconf=1 ; iconf<=nconf ; iconf++){
    eti = eki + epi;
    tempi = 2.0 * eki / dofx;
    
-   /* Calculamos el error relativo en la energía total */
+   /* Calculamos el error relativo en la energï¿½a total */
    if (iconf == 1){
       eto = eti;
    }
@@ -402,7 +402,7 @@ fprintf(resumen, "Energia Potencial: %.6lf \n", promep);
 fprintf(resumen, "Temperatura: %.6lf \n", promt);
 fprintf(resumen, "Presion: %.6lf \n", promp);
 
-/* Guardamos la configuración final de las particulas */
+/* Guardamos la configuraciï¿½n final de las particulas */
 guardar_configuracion(nat, boxx, boxy, boxz, rx, ry, rz, vx, vy, vz);  
 
 return 0;
@@ -512,8 +512,8 @@ double vx[], double vy[], double vz[])
 int i;
 double rtemp, sumx, sumy, sumz, uk, tempi, dof, prueba;
 
-/* Asignamos velocidades a las partículas de acuerdo a la equipartición de
-la energía y con distribución gaussiana */
+/* Asignamos velocidades a las partï¿½culas de acuerdo a la equiparticiï¿½n de
+la energï¿½a y con distribuciï¿½n gaussiana */
 if (dofx == 3){
    for(i=1; i<=nat ; i++){
       rtemp = sqrt(temp / amasa);
@@ -568,7 +568,7 @@ printf("Temperatura Inicial: %lf \n", tempi);
 return; 
 }
 
-/* Esta función convierte aleatorios uniformemente distribuidos en aleatorios 
+/* Esta funciï¿½n convierte aleatorios uniformemente distribuidos en aleatorios 
 gaussianamente distribuidos con distribucion normal */
 double gauss(void)
 {
@@ -587,7 +587,7 @@ rgauss = ((((a9 * r2 + a7) * r2 + a5) * r2 + a3) * r2 + a1) * r;
 return rgauss;
 }
 
-/* Esta función crea numeros aleatorios uniformemente distribuidos */
+/* Esta funciï¿½n crea numeros aleatorios uniformemente distribuidos */
 double aleatorio_uniforme(void)
 {
 int l = 5, c = 1;
@@ -609,7 +609,7 @@ int i, fnat;
 double fboxx, fboxy, fboxz, frho;
 FILE *xyz;
 
-/* Leemos el numero de particulas, tamaño de la caja y calculamos rho */
+/* Leemos el numero de particulas, tamaï¿½o de la caja y calculamos rho */
 xyz = fopen("xyz.dat", "r");
 printf("Leyendo la configuracion inicial...\n");
 fscanf(xyz, "%d", &fnat);
@@ -688,7 +688,9 @@ for(i=1 ; i<= nat ; i++){
 
 if (dofx == 3){
    /* Esta etiqueta paraleliza el programa */
-   #pragma omp parallel for schedule(static) shared(boxx,boxy,boxz,rx,ry,rz,fx,fy,fz) private(i,j,dx,dy,dz,rij,sn,sm,uij,duij,fxij,fyij,fzij,epj,wxj,wyj,wzj)
+   // #pragma omp parallel for schedule(static) shared(boxx,boxy,boxz,rx,ry,rz,fx,fy,fz) private(i,j,dx,dy,dz,rij,sn,sm,uij,duij,fxij,fyij,fzij,epj,wxj,wyj,wzj)
+   /* Esta etiqueta con la grÃ¡fica */
+   #pragma acc parallel loop copyin(rx, ry, rz) copy(fx, fy, fz) reduction(+:epi, wxxr, wyyr, wzzr)
    for(i=1 ; i<=nat-1 ; i++){
       epj = 0.0;
       wxj = 0.0;
