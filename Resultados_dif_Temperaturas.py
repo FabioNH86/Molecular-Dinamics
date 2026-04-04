@@ -19,7 +19,7 @@ Asesor: Dr. Luis Padilla
 # 1. Definimos los límites "razonables"
 rho_min_liquido = 0.70  # Umbral para considerar que hay una fase líquida clara
 rho_max_vapor = 0.10    # Umbral para la fase vapor
-ancho_bin = 0.50
+dx_usado = 0.50
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
 entrada = 2
@@ -75,8 +75,7 @@ for T in temperaturas:
                 elif propiedades_actuales[1] != propiedades_referencia[1]:
                     print(f'⚠️ ¡Las dimensiones de la caja no coinciden en T={T:.2f}!')
                 
-            volumen_bin, dimensiones_bin = obtener_dimensiones_bin(dx=ancho_bin, propiedades_caja=propiedades_referencia)
-            dx_usado = dimensiones_bin[0]
+            volumen_bin, dimensiones_bin = obtener_dimensiones_bin(dx=dx_usado, propiedades_caja=propiedades_referencia)
             num_particulas, dimensiones_caja = propiedades_referencia
             Lx, Ly, Lz = dimensiones_caja
             
@@ -91,7 +90,7 @@ for T in temperaturas:
             coordenadas_x = df_temp[0].values
 
             # Centrado
-            cuentas_pre, bordes_pre = np.histogram(coordenadas_x, bins=50, range=(0, Lx))
+            cuentas_pre, bordes_pre = np.histogram(coordenadas_x, bins=300, range=(0, Lx))
             idx_max = np.argmax(cuentas_pre)
             pos_liquido = (bordes_pre[idx_max] + bordes_pre[idx_max+1]) / 2
             desplazamiento = (Lx / 2) - pos_liquido
@@ -128,6 +127,10 @@ for T in temperaturas:
 
     mascara_vapor = (x < Lx * 0.1) | (x > Lx * 0.9)
     rho_V = np.mean(y[mascara_vapor])
+
+    # Cambio Por CHAT-GPT
+    #rho_L = np.mean(np.sort(y)[-10:])   # top densidades
+    #rho_V = np.mean(np.sort(y)[:10])    # bottom densidades
     
     max_rho = np.max(y)
     min_rho = np.min(y)

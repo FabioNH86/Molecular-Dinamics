@@ -688,9 +688,9 @@ for(i=1 ; i<= nat ; i++){
 
 if (dofx == 3){
    /* Esta etiqueta paraleliza el programa */
-   // #pragma omp parallel for schedule(static) shared(boxx,boxy,boxz,rx,ry,rz,fx,fy,fz) private(i,j,dx,dy,dz,rij,sn,sm,uij,duij,fxij,fyij,fzij,epj,wxj,wyj,wzj)
+   #pragma omp parallel for schedule(static) shared(boxx,boxy,boxz,rx,ry,rz,fx,fy,fz) private(i,j,dx,dy,dz,rij,sn,sm,uij,duij,fxij,fyij,fzij,epj,wxj,wyj,wzj)
    /* Esta etiqueta con la gráfica */
-   #pragma acc parallel loop copyin(rx, ry, rz) copy(fx, fy, fz) reduction(+:epi, wxxr, wyyr, wzzr)
+   //#pragma acc parallel loop copyin(rx, ry, rz) copy(fx, fy, fz) reduction(+:epi, wxxr, wyyr, wzzr)
    for(i=1 ; i<=nat-1 ; i++){
       epj = 0.0;
       wxj = 0.0;

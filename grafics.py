@@ -37,7 +37,7 @@ axs[0, 0].set_xlabel('Configuración')
 axs[0, 0].set_ylabel('Energía')
 
 # Panel 2: Energía Potencial (Fase inicial)
-axs[0, 1].plot(config[:salto], potential_e[:salto], color='tab:red')
+axs[0, 1].plot(config, potential_e, color='tab:red')
 #axs[0, 1].axhline(y=mean_potential_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
 axs[0, 1].set_title('Energía Potencial (Equilibración)')
 axs[0, 1].set_xlabel('Configuración')
