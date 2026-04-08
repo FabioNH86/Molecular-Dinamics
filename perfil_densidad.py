@@ -17,14 +17,14 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 2
+entrada = 1
 num_prueba = int(entrada)
 num_bines = 50 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 
 
 # -- VALORES REPORTADOS POR LA NIST
-nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, 3.314e-02, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
-nist_rho_l = [8.643e-01, 8.426e-01, 8.203e-01, 7.970e-01, 7.728e-01, 7.474e-01, 7.203e-01, 6.192e-01, 6.592e-01, 6.233e-01, 5.807e-01, 5.238e-01, 4.367e-01]
+nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
+nist_rho_l = [8.643e-01, 8.426e-01, 8.203e-01, 7.970e-01, 7.728e-01, 7.474e-01, 7.203e-01, 6.592e-01, 6.233e-01, 5.807e-01, 5.238e-01, 4.367e-01]
 
     # Valores de error de la NIST
 errores_nist_v = []
@@ -32,11 +32,13 @@ errores_nist_l = []
 
 
 # Lista de Temperaturas
-temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
+
 ruta_comun = f'Resultados/P{num_prueba}_LV_Mie'
 
 # Definimos la ruta de guardado
-ruta_graficos = os.path.join(ruta_comun, 'Graficos')
+ruta_graficos = os.path.join(ruta_comun, 'Graficos_2')
 
 # Si la carpeta no existe, la creamos automáticamente
 if not os.path.exists(ruta_graficos):
@@ -47,7 +49,12 @@ if not os.path.exists(ruta_graficos):
 densidades_liquido = []
 densidades_vapor = []
 
-for T in temperaturas:
+for T in temperaturas_originales:
+
+    if T == 0.95: # Se omite el procesado de datos a esa temperatura
+        continue
+
+
     nombre_carpeta = f"T={T:.2f}"
     ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, "xyz_T*.dat")
     archivo_encontrado = glob.glob(ruta_busqueda)
@@ -214,23 +221,30 @@ plt.plot(densidades_liquido, temperaturas, 'o', color='blue', label='Líquido Sa
 plt.plot(densidades_vapor, temperaturas, 'o', color='red', label='Vapor Saturado')
 
 
-# --- CÁLCULO DE ERRORES RESIDUOS (SIMULACIÓN vs NIST) ---
+# --- CÁLCULO DE ERRORES ABSOLUTOS MEDIOS (SIMULACIÓN vs NIST) ---
 
 errores_l = []
+errores_l_relativos = []
 for mi_rho_l, nist_rho_l_val in zip(densidades_liquido, nist_rho_l):
-    error = mi_rho_l - nist_rho_l_val
+    error = (mi_rho_l - nist_rho_l_val) 
+    error_relativo = error/nist_rho_l_val * 100
     errores_l.append(abs(error))
+    errores_l_relativos.append(abs(error_relativo))
 
 error_liquido_promedio = sum(errores_l) / len(errores_l)
-error_liquido_promedio *= 100
+error_l_rel_promedio = sum(errores_l_relativos)/len(errores_l_relativos)
+
 
 errores_v = []
+errores_v_relativos = []
 for mi_rho_v, nist_rho_v_val in zip(densidades_vapor, nist_rho_v):
-    error = mi_rho_v - nist_rho_v_val
+    error = (mi_rho_v - nist_rho_v_val) 
+    error_relativo = error/nist_rho_v_val * 100
     errores_v.append(abs(error))
+    errores_v_relativos.append(abs(error_relativo))
 
 error_vapor_promedio = sum(errores_v) / len(errores_v)
-error_vapor_promedio *= 100
+error_v_rel_promedio = sum(errores_v_relativos)/len(errores_v_relativos)
 
 
 # --- DATOS DE LA NIST ---
@@ -253,8 +267,12 @@ plt.show()
 
 print('='*40)
 print("--- VALIDACIÓN FINAL (Error Absoluto Medio) ---")
-print(f"Error promedio en Fase Líquida: {error_liquido_promedio:.2f}%")
-print(f"Error promedio en Fase Vapor: {error_vapor_promedio:.2f}%")
+print(f"Error promedio en Fase Líquida: {error_liquido_promedio:.2f}")
+print(f"Error promedio en Fase Vapor: {error_vapor_promedio:.2f}")
+print('='*40)
+print("--- VALIDACIÓN FINAL (Error Relativo Medio) ---")
+print(f"Error relativo promedio en Líquido: {error_l_rel_promedio:.2f}%")
+print(f"Error relativo promedio en Vapor: {error_v_rel_promedio:.2f}%")
 print('='*40)
 
 print("\n--- Procesamiento de todas las temperaturas finalizado ---")
