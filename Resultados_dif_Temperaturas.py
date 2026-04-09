@@ -22,7 +22,7 @@ rho_max_vapor = 0.10    # Umbral para la fase vapor
 dx_usado = 0.50
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 2
+entrada = 3
 num_prueba = int(entrada)
 
 # Lista de Temperaturas

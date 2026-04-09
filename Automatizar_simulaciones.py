@@ -12,7 +12,7 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 Fabio Noriega Hernández
 """
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 3
+num_prueba = 4
 
 temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
 ruta_base = f"Resultados/P{num_prueba}_LV_Mie"
@@ -28,14 +28,14 @@ def actualizar_entradas(temp):
 6.0       expm_exponente_para_la_parte_atractiva_6_en_general
 0.001    time_tiempo_de_integracion
 63.496 15.874 15.874  Lx_Ly_Lz_en_unidades_reducidas
-30 10 10  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
+40 10 10  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
 {temp:<10.2f}   temp_en_unidades_reducidas_para_asignar_velocidades
 0.01      taut_para_termostato_berendsen
 0.0       presion_en_unidades_reducidas_para_presostato
 0.0       taup_para_presostato_berendsen
 4.0       rcut_r_de_corte_del_potencial_menor_a_la_mitad_de_la_caja
-300000    nconfequi_numero_de_configuraciones_para_equilibrar
-1000000   nconf_numero_de_configuraciones
+100000    nconfequi_numero_de_configuraciones_para_equilibrar
+300000   nconf_numero_de_configuraciones
 50000     nperfil_frecuencia_para_calcular_distribuciones
 0.1       deltar_ancho_del_intervalo_para_perfil_de_densidad
 10000     nmovie_frecuencia_para_tomar_fotos

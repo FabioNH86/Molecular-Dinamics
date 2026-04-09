@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt 
+import matplotlib.cm as cm
 import numpy as np 
 import pandas as pd 
 import os
@@ -19,7 +20,7 @@ Asesor: Dr. Luis Padilla
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
 entrada = 4
 num_prueba = int(entrada)
-num_bines = 50 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
+num_bines = 90 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 
 
 # -- VALORES REPORTADOS POR LA NIST
@@ -48,6 +49,15 @@ if not os.path.exists(ruta_graficos):
 # Lista de densidades de líquido y vapor
 densidades_liquido = []
 densidades_vapor = []
+
+
+# -- GENERACIÓN DE UN SOLO PERFIL --
+plt.figure(figsize=(16, 10))
+centros_bines = np.linspace(0, 63.496, num_bines)
+norm = plt.Normalize(min(temperaturas), max(temperaturas))
+cmap = cm.viridis # 'viridis' es excelente para escalas térmicas
+perfiles_por_temperatura = {} # Diccionario para guardar {T: [densidades]}
+ax = plt.gca()
 
 for T in temperaturas_originales:
 
@@ -98,12 +108,13 @@ for T in temperaturas_originales:
     })
     print('Nuevas coordenadas')
     print(coordenadas_norm.head())
+
     # --- GENERACIÓN DEL GRÁFICO POR TEMPERATURA (DENTRO DEL CICLO) ---
     print(f'Generando gráfico para T = {T:.2f}...')
 
     cortes_x = np.linspace(0, Lx, num_bines + 1)
 
-    plt.figure(figsize=(12, 6))
+    #plt.figure(figsize=(12, 6))
     
 
     num_particulas_global = len(coordenadas_norm)
@@ -124,7 +135,7 @@ for T in temperaturas_originales:
         x_final = cortes_x[i+1]
 
         # DEBUG: Vemos los límites del bin en 2D
-        plt.axvline(x=x_final, color='red', linewidth=1.0, alpha=0.3)
+        #plt.axvline(x=x_final, color='red', linewidth=1.0, alpha=0.3)
 
         bin_actual = coordenadas_norm[(coordenadas_norm['x'] >= x_inicial) & (coordenadas_norm['x'] < x_final)]
 
@@ -164,115 +175,80 @@ for T in temperaturas_originales:
     print('')
 
     
-    # Graficamos las nuevas coordenadas x e y (Scatter Plot)
-    plt.scatter(new_x, new_y, s=8, alpha=0.5, c='dodgerblue', edgecolors='none')
+    # --- GENERACIÓN DEL PERFIL DE DENSIDAD (Línea continua) ---
+    #plt.figure(figsize=(10, 5))
     
-    # --- Verificación visual de los ejes ---
-    # Dibujamos los ejes principales en negro para verificar el origen (0,0)
-    plt.axhline(0, color='black', linewidth=1.5, linestyle='--')
-    plt.axvline(0, color='black', linewidth=1.5, linestyle='--')
-    plt.axhline(Ly, color='black', linewidth=1.5, linestyle='--')
-    plt.axvline(Lx, color='black', linewidth=1.5, linestyle='--')
+    # Calculamos el centro de cada bin para que el eje X sea la posición exacta
+    # cortes_x tiene los bordes, así que promediamos para obtener el centro.
+    # centros_bines = (cortes_x[:-1] + cortes_x[1:]) / 2
 
+    # # Graficamos la línea continua de densidad local
+    # plt.plot(centros_bines, densidades_locales, color='teal', linewidth=2, label='Perfil de densidad')
     
-    # Configuración de etiquetas y título
-    plt.title(f'Distribución de Partículas (Proyección XY)\nTemperatura = {T:.2f} (Prueba P{num_prueba})', fontsize=14, fontweight='bold')
-    plt.xlabel('Coordenada X (Trasladada al origen)', fontsize=12)
-    plt.ylabel('Coordenada Y (Trasladada al origen)', fontsize=12)
+    # # Opcional: Rellenar el área bajo la curva para mejor visualización
+    # plt.fill_between(centros_bines, densidades_locales, color='teal', alpha=0.2)
+
+    # # --- Verificación visual de los promedios calculados ---
+    # # Dibujamos líneas horizontales para mostrar qué valores tomó el script como rho_L y rho_V
+    # if not np.isnan(rho_liquido):
+    #     plt.axhline(rho_liquido, color='blue', linestyle='--', alpha=0.7, label=f'Promedio Líquido: {rho_liquido:.3f}')
+    # plt.axhline(rho_vapor, color='red', linestyle='--', alpha=0.7, label=f'Promedio Vapor: {rho_vapor:.3f}')
+
+    # # Configuración de etiquetas y título
+    # plt.title(f'Perfil de Densidad Local\nTemperatura = {T:.2f} (Prueba P{num_prueba})', fontsize=14, fontweight='bold')
+    # plt.xlabel('Posición en el eje X de la caja ($L_x$)', fontsize=12)
+    # plt.ylabel('Densidad Reducida $\\rho^*$', fontsize=12)
     
-    # Ajustar límites para asegurar que se vea el origen (0,0) claramente
-    L_max = max(new_x.max(), new_y.max()) # Aproximación del tamaño de la caja
-    #plt.xlim(left=-0.05 * L_max, right=1.05 * L_max)
-    #plt.ylim(bottom=-0.05 * L_max, top=1.05 * L_max)
+    # # Ajustar límites
+    # plt.xlim(0, Lx)
+    # plt.ylim(0, max(densidades_locales) * 1.1) # Un 10% más arriba del máximo para que respire el gráfico
     
-    # Aspecto 1:1 para que la caja no se vea distorsionada (si la caja es cúbica)
-    plt.gca().set_aspect('equal', adjustable='box')
-
-    plt.grid(True, linestyle=':', alpha=0.6)
-    plt.tight_layout()
+    # plt.grid(True, linestyle=':', alpha=0.6)
+    # plt.legend()
+    # plt.tight_layout()
     
-    # Mostrar gráfico y pausar (esperar a que el usuario cierre la ventana antes de la siguiente T)
-    # Si quieres que se muestren todas a la vez (no recomendado si son muchas T), quita el plt.show()
-    # y usa plt.savefig() para guardarlas en archivos.
-    #plt.show() 
+    # # Cambiamos el nombre del archivo para reflejar que es un perfil de densidad
+    # nombre_archivo = f"Perfil_Densidad_T_{T:.2f}.png"
+    # ruta_final_archivo = os.path.join(ruta_graficos, nombre_archivo)
     
-    # Limpiar la figura actual de la memoria antes de pasar a la siguiente T
-    #plt.close()
-
-    # Definimos el nombre del archivo según la temperatura
-    nombre_archivo = f"Scatter_T_{T:.2f}.png"
-    ruta_final_archivo = os.path.join(ruta_graficos, nombre_archivo)
+    # # Guardamos la imagen
+    # plt.savefig(ruta_final_archivo, dpi=300, bbox_inches='tight')
+    # print(f"Perfil de densidad guardado en: {ruta_final_archivo}")
     
-    # Guardamos la imagen con buena resolución (300 dpi)
-    plt.savefig(ruta_final_archivo, dpi=300, bbox_inches='tight')
-    print(f"Gráfico guardado en: {ruta_final_archivo}")
+    # # IMPORTANTE: Cerrar la figura
+    # plt.close()
     
-    # IMPORTANTE: Cerrar la figura para liberar memoria RAM
-    plt.close()
+    # Aplicamos el centrado que discutimos antes
+    idx_max = np.argmax(densidades_locales)
+    shift = (num_bines // 2) - idx_max
+    densidades_centradas = np.roll(densidades_locales, shift)
+    
+    # Guardamos el perfil asociado a su temperatura
+    perfiles_por_temperatura[T] = densidades_centradas
 
+for T, perfil in perfiles_por_temperatura.items():
+    if T > 1.10:
+        color = 'darkgray'
+    else:
+        color = cmap(norm(T))
+    plt.plot(centros_bines, perfil, label=f'T* = {T:.2f}', color=color, alpha=0.8, linewidth=1.0)
 
-# --- GRÁFICO DE COEXISTENCIA LÍQUIDO-VAPOR ---
-plt.figure(figsize=(8, 6))
+# Configuración estética del gráfico conjunto
+plt.title(f'Evolución de los Perfiles de Densidad con la Temperatura (Ensayo {num_prueba})', fontsize=14, fontweight='bold')
+plt.xlabel('Posición en el eje X', fontsize=12)
+plt.ylabel('Densidad Reducida $\\rho^*$', fontsize=12)
 
-# Graficamos la rama del líquido
-plt.plot(densidades_liquido, temperaturas, 'o', color='blue', label='Líquido Saturado')
+# Añadimos una barra de colores para indicar la temperatura
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])
+cbar = plt.colorbar(sm, ax=ax)
+cbar.set_label('Temperatura Reducida $T^*$')
 
-# Graficamos la rama del vapor
-plt.plot(densidades_vapor, temperaturas, 'o', color='red', label='Vapor Saturado')
+plt.grid(True, linestyle=':', alpha=0.5)
+plt.legend(bbox_to_anchor=(1.25, 1), loc='upper left', fontsize='small', ncol=1) # Leyenda fuera del gráfico
+#plt.tight_layout()
 
-
-# --- CÁLCULO DE ERRORES ABSOLUTOS MEDIOS (SIMULACIÓN vs NIST) ---
-
-errores_l = []
-errores_l_relativos = []
-for mi_rho_l, nist_rho_l_val in zip(densidades_liquido, nist_rho_l):
-    error = (mi_rho_l - nist_rho_l_val) 
-    error_relativo = error/nist_rho_l_val * 100
-    errores_l.append(abs(error))
-    errores_l_relativos.append(abs(error_relativo))
-
-error_liquido_promedio = sum(errores_l) / len(errores_l)
-error_l_rel_promedio = sum(errores_l_relativos)/len(errores_l_relativos)
-
-
-errores_v = []
-errores_v_relativos = []
-for mi_rho_v, nist_rho_v_val in zip(densidades_vapor, nist_rho_v):
-    error = (mi_rho_v - nist_rho_v_val) 
-    error_relativo = error/nist_rho_v_val * 100
-    errores_v.append(abs(error))
-    errores_v_relativos.append(abs(error_relativo))
-
-error_vapor_promedio = sum(errores_v) / len(errores_v)
-error_v_rel_promedio = sum(errores_v_relativos)/len(errores_v_relativos)
-
-
-# --- DATOS DE LA NIST ---
-plt.scatter(nist_rho_v, temperaturas, marker='x', color='darkred', label='NIST (Vapor)', zorder=5)
-plt.scatter(nist_rho_l, temperaturas, marker='x', color='darkblue', label='NIST (Líquido)', zorder=5)
-
-plt.title(f'Diagrama de Coexistencia $T$ vs $\\rho$ (Ensayo {num_prueba})')
-plt.xlabel('Densidad Reducida $\\rho^*$')
-plt.ylabel('Temperatura Reducida $T^*$')
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.legend()
-
-# --- Guardado de la Curva de Coexistencia ---
-ruta_coexistencia = os.path.join(ruta_graficos, f'Coexistencia_P{num_prueba}_vs_NIST.png')
-plt.savefig(ruta_coexistencia, dpi=300, bbox_inches='tight')
-print(f"\n--- Diagrama de Coexistencia guardado en: {ruta_coexistencia} ---")
-
-
+# Guardamos el gráfico final que contiene todas las líneas
+ruta_perfil_total = os.path.join(ruta_graficos, "Perfil_Densidad_Conjunto_Inestables_grises.png")
+plt.savefig(ruta_perfil_total, dpi=300, bbox_inches='tight')
 plt.show()
-
-print('='*40)
-print("--- VALIDACIÓN FINAL (Error Absoluto Medio) ---")
-print(f"Error promedio en Fase Líquida: {error_liquido_promedio:.2f}")
-print(f"Error promedio en Fase Vapor: {error_vapor_promedio:.2f}")
-print('='*40)
-print("--- VALIDACIÓN FINAL (Error Relativo Medio) ---")
-print(f"Error relativo promedio en Líquido: {error_l_rel_promedio:.2f}%")
-print(f"Error relativo promedio en Vapor: {error_v_rel_promedio:.2f}%")
-print('='*40)
-
-print("\n--- Procesamiento de todas las temperaturas finalizado ---")
