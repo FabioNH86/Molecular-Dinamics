@@ -18,8 +18,12 @@ double seed = 0.0;
 FILE *movie, *gr, *perfil;
                            
 /* Declaracion de las funciones */
-void crear_posiciones(int *nat, double *rho, int dofx, double rx[], double ry[], 
+void crear_posiciones_uniformemente(int *nat, double *rho, int dofx, double rx[], double ry[], 
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy,
+int ndivz);
+
+void crear_posiciones_centradas_rectangularmente(int *nat, double *rho, int dofx, double rx[], double ry[], // Coloca las partículas centradas en el centro de la caja de simulación
+double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz);
 
 void crear_velocidades(int nat, int dofx, double amasa, double temp,
@@ -190,7 +194,7 @@ if (rcut >= (0.5*ladomenor)){
 
 /* Creamos las posiciones y velocidades iniciales si es primer corrida */   
 if (nopcion == 1){
-   crear_posiciones(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
+   crear_posiciones_centradas_rectangularmente(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
    ndivy, ndivz);
    crear_velocidades(nat, dofx, amasa, temp, vx, vy, vz);
 }
@@ -505,34 +509,32 @@ int ndivz) {
    return;
 }
 
-void crear_posiciones_centradas_rectangular(int *nat, double *rho, int dofx, double rx[], double ry[], // Coloca las partículas centradas en el centro de la caja de simulación
+void crear_posiciones_centradas_rectangularmente(int *nat, double *rho, int dofx, double rx[], double ry[], // Coloca las partículas centradas en el centro de la caja de simulación
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz) { 
    double volumen_caja, longitud, area, deltax, deltay, deltaz;
-   double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x, minibox_y, minibox_z;
+   double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x;
    int i, j, k, n; 
 
    printf("Creando configuración inicial radialmente centradas...\n");
    if (dofx == 3) {
       // Para 3D
       // Calculamos el volumen total de la caja
-      *nat = ndivx * ndivy * ndivz; // Se obtiene el número de átomos
       volumen_caja = boxx * boxy * boxz; 
+      *nat = ndivx * ndivy * ndivz; // Se obtiene el número de átomos
       *rho = (*nat) / volumen_caja;    
       printf("Densidad volumétrica reducida global: %lf \n", *rho);
 
       // En esta version se genera un volumen interno para distribuir las partículas.
       minibox_x = boxx / 3.0;
-      minibox_y = boxy / 3.0;
-      minibox_z = boxz / 3.0;
-      volumen_minibox = minibox_x * minibox_y * minibox_z;          
+      volumen_minibox = minibox_x * boxy * boxz;           
       minibox_rho = (*nat) / volumen_minibox;
       printf("Densidad volumetrica reducida de la caja de distribución: %lf \n", minibox_rho);
 
       // Calculamos la distancia entre partículas
       deltax = minibox_x / ndivx;
-      deltay = minibox_y / ndivy;
-      deltaz = minibox_z / ndivz;
+      deltay = boxy / ndivy;
+      deltaz = boxz / ndivz;
 
       // Creamos las posiciones iniciales de las particulas dentro de la mini-box
       n = 0;
@@ -564,13 +566,12 @@ int ndivz) {
       printf("Densidad superficial reducida: %lf \n", *rho);
 
       minibox_x = boxx / 3.0;
-      minibox_y = boxy / 3.0;
-      area_minibox = minibox_x * minibox_y;
+      area_minibox = minibox_x * boxy;
       minibox_rho = (*nat) / area_minibox;
       printf("Densidad superficial reducida: %lf \n", minibox_rho);
       /* Calculamos la separacion entre particulas */
       deltax = minibox_x / ndivx;
-      deltay = minibox_y / ndivy;
+      deltay = boxy / ndivy;
 
       /* Creamos las posiciones iniciales en un cuadrado */
       n = 0;
@@ -603,7 +604,7 @@ int ndivz) {
 
       /* Calculamos la separacion entre particulas */
       deltax = longitud_minibox / ndivx;
-               
+
       /* Creamos las posiciones iniciales en una linea */
       n = 0;
       for(i=1; i<=ndivx ; i++){
