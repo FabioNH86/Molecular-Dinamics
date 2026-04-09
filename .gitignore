@@ -2,7 +2,6 @@ __pycache__
 try_code
 mie
 fast_mie
-movie.gro
 presiones.dat
 resumen.dat
 todo.dat
@@ -10,13 +9,8 @@ xyz.dat
 .vscode
 in.dat
 mie_gpu
-Resultados/P1_LV_Mie/
-Resultados/P2_LV_Mie/
-Resultados/P3_LV_Mie/
-Resultados/P4_LV_Mie/
-*.dat
-*.gro
+*.png
 *.mp4
 *.mkv
 jhsdjhkd.py
-Resultados_Respaldo
+Resultados

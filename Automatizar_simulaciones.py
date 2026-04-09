@@ -16,7 +16,7 @@ num_prueba = 4
 
 temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
 ruta_base = f"Resultados/P{num_prueba}_LV_Mie"
-ejecutable = "./fast_mie"
+ejecutable = "./mie"
 
 def actualizar_entradas(temp):
     """Modifica el archivo in.dat con una temperatura seleccionada."""
