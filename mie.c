@@ -67,7 +67,7 @@ double wxxv, wyyv, wzzv, pxx, pyy, pzz;
 double epilr, etilr, presilr, sumek, sumep, sumt, sump, promek, promep;
 double promp, promt, expn, expm;
 int nat, dofx, nmovie, nprint, i, iconf, nperfil, ndist;
-int ncolectivo, nopcion, nconfequi, nconf, ndivx, ndivy, ndivz;
+int ncolectivo, nopcion, nconfequi, nconf, ndivx, ndivy, ndivz, num_atomos;
 int MAXNAT, MAXNG;
 char trash[100];
 FILE *in, *resumen, *todo, *presiones;       
@@ -84,12 +84,12 @@ presiones = fopen("presiones.dat", "w");
 /* Leemos las variables del archivo de entrada in.dat    */
 fscanf(in, "%d %s", &ncolectivo, trash);
 fscanf(in, "%d %s", &nopcion, trash);
-fscanf(in, "%d %s", &dofx, trash);
+fscanf(in, "%d %s", &dofx, trash); // Número de dimensiones a trabajar
 fscanf(in, "%lf %s", &expn, trash);
 fscanf(in, "%lf %s", &expm, trash);
 fscanf(in, "%lf %s", &time, trash);
 fscanf(in, "%lf %lf %lf %s", &boxx, &boxy, &boxz, trash);
-fscanf(in, "%d %d %d %s", &ndivx, &ndivy, &ndivz, trash);
+fscanf(in, "%d %d %d %s", &ndivx, &ndivy, &ndivz, trash); // Aquí se almacena la entrada de la distribución de partículas
 fscanf(in, "%lf %s", &temp, trash);
 fscanf(in, "%lf %s", &taut, trash);
 fscanf(in, "%lf %s", &presion, trash);
@@ -412,97 +412,214 @@ return 0;
 
 /* Funciones del programa principal */
 /* Creamos las posiciones iniciales en la caja */
-void crear_posiciones(int *nat, double *rho, int dofx, double rx[], double ry[],
+void crear_posiciones_uniformemente(int *nat, // El número total de partículas ingresado
+   double *rho, int dofx, double rx[], double ry[], 
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
-int ndivz)
-{
-double volumen, area, longitud, deltax, deltay, deltaz;
-int i, j, k, n;
+int ndivz) {
+   double volumen, area, longitud, deltax, deltay, deltaz;
+   int i, j, k, n;
 
-printf("Creando configuracion inicial...\n");
-if (dofx == 3){
-   /* Para 3D */
-   /* Calculamos la densidad y el numero de particulas */
-   volumen = boxx * boxy * boxz;
-   *nat = ndivx * ndivy * ndivz;   
-   *rho = (*nat) / volumen;
-   printf("Densidad volumetrica reducida: %lf \n", *rho);
-   /* Calculamos la separacion entre particulas */
-   deltax = boxx / ndivx;
-   deltay = boxy / ndivy;         
-   deltaz = boxz / ndivz;
-   /* Creamos las posiciones iniciales en la caja */  
-   n = 0;
-   for(i=1; i<=ndivx ; i++){
-      for(j=1; j<=ndivy ; j++){
-         for(k=1; k<=ndivz ; k++){
+   printf("Creando configuracion inicial...\n");
+   if (dofx == 3){
+      /* Para 3D */
+      /* Calculamos la densidad y el numero de particulas */
+      volumen = boxx * boxy * boxz;
+      *nat = ndivx * ndivy * ndivz;   
+      *rho = (*nat) / volumen;
+      printf("Densidad volumetrica reducida: %lf \n", *rho);
+      /* Calculamos la separacion entre particulas */
+      deltax = boxx / ndivx;
+      deltay = boxy / ndivy;         
+      deltaz = boxz / ndivz;
+      /* Creamos las posiciones iniciales en la caja */  
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         for(j=1; j<=ndivy ; j++){
+            for(k=1; k<=ndivz ; k++){
+               n += 1;
+               rx[n] = (i-1) * deltax + 0.5;
+               ry[n] = (j-1) * deltay + 0.5;
+               rz[n] = (k-1) * deltaz + 0.5;
+            }
+         }
+      }
+      
+      /* Centramos las posiciones simetricamente respecto al origen */
+      for(i=1; i<=(*nat) ; i++){
+      rx[i] = rx[i] - 0.5 * boxx;
+      ry[i] = ry[i] - 0.5 * boxy;
+      rz[i] = rz[i] - 0.5 * boxz;
+      }   
+   }
+   else if (dofx == 2){
+      /* Para 2D */
+      /* Calculamos la densidad y el numero de particulas */
+      area = boxx * boxy;
+      *nat = ndivx * ndivy;   
+      *rho = (*nat) / area;
+      printf("Densidad superficial reducida: %lf \n", *rho);
+      /* Calculamos la separacion entre particulas */
+      deltax = boxx / ndivx;
+      deltay = boxy / ndivy;         
+      /* Creamos las posiciones iniciales en un cuadrado */
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         for(j=1; j<=ndivy ; j++){
             n += 1;
             rx[n] = (i-1) * deltax + 0.5;
             ry[n] = (j-1) * deltay + 0.5;
-            rz[n] = (k-1) * deltaz + 0.5;
          }
       }
+      
+      /* Centramos las posiciones simetricamente respecto al origen */
+      for(i=1; i<=(*nat) ; i++){
+      rx[i] = rx[i] - 0.5 * boxx;
+      ry[i] = ry[i] - 0.5 * boxy;
+      rz[i] = 0.0;
+      }   
    }
-   
-   /* Centramos las posiciones simetricamente respecto al origen */
-   for(i=1; i<=(*nat) ; i++){
-   rx[i] = rx[i] - 0.5 * boxx;
-   ry[i] = ry[i] - 0.5 * boxy;
-   rz[i] = rz[i] - 0.5 * boxz;
-   }   
-}
-else if (dofx == 2){
-   /* Para 2D */
-   /* Calculamos la densidad y el numero de particulas */
-   area = boxx * boxy;
-   *nat = ndivx * ndivy;   
-   *rho = (*nat) / area;
-   printf("Densidad superficial reducida: %lf \n", *rho);
-   /* Calculamos la separacion entre particulas */
-   deltax = boxx / ndivx;
-   deltay = boxy / ndivy;         
-   /* Creamos las posiciones iniciales en un cuadrado */
-   n = 0;
-   for(i=1; i<=ndivx ; i++){
-      for(j=1; j<=ndivy ; j++){
+   else if (dofx == 1){
+      /* Para 1D */
+      /* Calculamos la densidad y el numero de particulas */
+      longitud = boxx;
+      *nat = ndivx;   
+      *rho = (*nat) / longitud;
+      printf("Densidad lineal reducida: %lf \n", *rho);
+      /* Calculamos la separacion entre particulas */
+      deltax = boxx / ndivx;         
+      /* Creamos las posiciones iniciales en una linea */
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
          n += 1;
          rx[n] = (i-1) * deltax + 0.5;
-         ry[n] = (j-1) * deltay + 0.5;
       }
+      
+      /* Centramos las posiciones simetricamente respecto al origen */
+      for(i=1; i<=(*nat) ; i++){
+      rx[i] = rx[i] - 0.5 * boxx;
+      ry[i] = 0.0;
+      rz[i] = 0.0;
+      }   
    }
-   
-   /* Centramos las posiciones simetricamente respecto al origen */
-   for(i=1; i<=(*nat) ; i++){
-   rx[i] = rx[i] - 0.5 * boxx;
-   ry[i] = ry[i] - 0.5 * boxy;
-   rz[i] = 0.0;
-   }   
-}
-else if (dofx == 1){
-   /* Para 1D */
-   /* Calculamos la densidad y el numero de particulas */
-   longitud = boxx;
-   *nat = ndivx;   
-   *rho = (*nat) / longitud;
-   printf("Densidad lineal reducida: %lf \n", *rho);
-   /* Calculamos la separacion entre particulas */
-   deltax = boxx / ndivx;         
-   /* Creamos las posiciones iniciales en una linea */
-   n = 0;
-   for(i=1; i<=ndivx ; i++){
-      n += 1;
-      rx[n] = (i-1) * deltax + 0.5;
-   }
-   
-   /* Centramos las posiciones simetricamente respecto al origen */
-   for(i=1; i<=(*nat) ; i++){
-   rx[i] = rx[i] - 0.5 * boxx;
-   ry[i] = 0.0;
-   rz[i] = 0.0;
-   }   
+
+   return;
 }
 
-return;
+void crear_posiciones_centradas_rectangular(int *nat, double *rho, int dofx, double rx[], double ry[], // Coloca las partículas centradas en el centro de la caja de simulación
+double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
+int ndivz) { 
+   double volumen_caja, longitud, area, deltax, deltay, deltaz;
+   double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x, minibox_y, minibox_z;
+   int i, j, k, n; 
+
+   printf("Creando configuración inicial radialmente centradas...\n");
+   if (dofx == 3) {
+      // Para 3D
+      // Calculamos el volumen total de la caja
+      *nat = ndivx * ndivy * ndivz; // Se obtiene el número de átomos
+      volumen_caja = boxx * boxy * boxz; 
+      *rho = (*nat) / volumen_caja;    
+      printf("Densidad volumétrica reducida global: %lf \n", *rho);
+
+      // En esta version se genera un volumen interno para distribuir las partículas.
+      minibox_x = boxx / 3.0;
+      minibox_y = boxy / 3.0;
+      minibox_z = boxz / 3.0;
+      volumen_minibox = minibox_x * minibox_y * minibox_z;          
+      minibox_rho = (*nat) / volumen_minibox;
+      printf("Densidad volumetrica reducida de la caja de distribución: %lf \n", minibox_rho);
+
+      // Calculamos la distancia entre partículas
+      deltax = minibox_x / ndivx;
+      deltay = minibox_y / ndivy;
+      deltaz = minibox_z / ndivz;
+
+      // Creamos las posiciones iniciales de las particulas dentro de la mini-box
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         for(j=1; j<=ndivy ; j++){
+            for(k=1; k<=ndivz ; k++){
+               n += 1;
+               rx[n] = (i-1) * deltax + 0.5;
+               ry[n] = (j-1) * deltay + 0.5;
+               rz[n] = (k-1) * deltaz + 0.5;
+            }
+         }
+      }
+
+      // Centramos las posiciones simetricamente respecto al origen
+      for(i=1; i<=(*nat) ; i++){
+         rx[i] = rx[i] - 0.5 * boxx;
+         ry[i] = ry[i] - 0.5 * boxy;
+         rz[i] = rz[i] - 0.5 * boxz;
+      }  
+   }
+
+   else if (dofx == 2) { 
+      // Para 2D
+      // calculamos la densidad y número de partículas
+      area = boxx * boxy;
+      *nat = ndivx * ndivy;   
+      *rho = (*nat) / area;
+      printf("Densidad superficial reducida: %lf \n", *rho);
+
+      minibox_x = boxx / 3.0;
+      minibox_y = boxy / 3.0;
+      area_minibox = minibox_x * minibox_y;
+      minibox_rho = (*nat) / area_minibox;
+      printf("Densidad superficial reducida: %lf \n", minibox_rho);
+      /* Calculamos la separacion entre particulas */
+      deltax = minibox_x / ndivx;
+      deltay = minibox_y / ndivy;
+
+      /* Creamos las posiciones iniciales en un cuadrado */
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         for(j=1; j<=ndivy ; j++){
+            n += 1;
+            rx[n] = (i-1) * deltax + 0.5;
+            ry[n] = (j-1) * deltay + 0.5;
+         }
+      }
+      
+      /* Centramos las posiciones simetricamente respecto al origen */
+      for(i=1; i<=(*nat) ; i++){
+         rx[i] = rx[i] - 0.5 * boxx;
+         ry[i] = ry[i] - 0.5 * boxy;
+         rz[i] = 0.0;
+      }   
+   }
+   
+   else if (dofx == 1){
+      /* Para 1D */
+      /* Calculamos la densidad y el numero de particulas */
+      longitud = boxx;
+      *nat = ndivx;   
+      *rho = (*nat) / longitud;
+      printf("Densidad lineal reducida: %lf \n", *rho);
+
+      // Calculamos la sección de generación de partículas
+      longitud_minibox = boxx / 3.0;
+
+      /* Calculamos la separacion entre particulas */
+      deltax = longitud_minibox / ndivx;
+               
+      /* Creamos las posiciones iniciales en una linea */
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         n += 1;
+         rx[n] = (i-1) * deltax + 0.5;
+      }
+      
+      /* Centramos las posiciones simetricamente respecto al origen */
+      for(i=1; i<=(*nat) ; i++){
+         rx[i] = rx[i] - 0.5 * boxx;
+         ry[i] = 0.0;
+         rz[i] = 0.0;
+      }   
+   }
+
+   return;
 }
 
 /* Creamos las velocidades iniciales de acuerdo a una distribucion gaussiana */
@@ -942,7 +1059,7 @@ fprintf(movie, "%12d\n", nat);
 
 for(i=1 ; i <= nat ; i++){
    marca = 'O';
-   if (i == 1){
+   if (i == 1){ // Se señalan partículas para distinguir movimiento (la 1 y la 10)
    marca = 'N';   
    }
    else if (i == 10){
