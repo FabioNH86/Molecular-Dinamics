@@ -516,7 +516,7 @@ int ndivz) {
    double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x;
    int i, j, k, n; 
 
-   printf("Creando configuración inicial radialmente centradas...\n");
+   printf("Creando configuración inicial rectangularmente centrada...\n");
    if (dofx == 3) {
       // Para 3D
       // Calculamos el volumen total de la caja
@@ -529,7 +529,7 @@ int ndivz) {
       minibox_x = boxx / 3.0;
       volumen_minibox = minibox_x * boxy * boxz;           
       minibox_rho = (*nat) / volumen_minibox;
-      printf("Densidad volumetrica reducida de la caja de distribución: %lf \n", minibox_rho);
+      printf("Densidad volumetrica reducida de la mini caja centrada: %lf \n", minibox_rho);
 
       // Calculamos la distancia entre partículas
       deltax = minibox_x / ndivx;
@@ -549,9 +549,9 @@ int ndivz) {
          }
       }
 
-      // Centramos las posiciones simetricamente respecto al origen
+      // Centramos las posiciones simetricamente respecto al centro de la caja
       for(i=1; i<=(*nat) ; i++){
-         rx[i] = rx[i] - 0.5 * boxx;
+         rx[i] = rx[i] - 0.5 * minibox_x;
          ry[i] = ry[i] - 0.5 * boxy;
          rz[i] = rz[i] - 0.5 * boxz;
       }  
