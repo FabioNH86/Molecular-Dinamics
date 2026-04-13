@@ -12,10 +12,9 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 Fabio Noriega Hernández
 """
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 5
+num_prueba = 6
 
-#temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas = [0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
 ruta_base = f"Resultados/P{num_prueba}_LV_Mie"
 ejecutable = "./new_mie"
 
@@ -35,12 +34,12 @@ def actualizar_entradas(temp):
 0.0       presion_en_unidades_reducidas_para_presostato
 0.0       taup_para_presostato_berendsen
 4.0       rcut_r_de_corte_del_potencial_menor_a_la_mitad_de_la_caja
-100000    nconfequi_numero_de_configuraciones_para_equilibrar
-300000    nconf_numero_de_configuraciones
+500000    nconfequi_numero_de_configuraciones_para_equilibrar
+1000000   nconf_numero_de_configuraciones
 50000     nperfil_frecuencia_para_calcular_distribuciones
 0.1       deltar_ancho_del_intervalo_para_perfil_de_densidad
 10000     nmovie_frecuencia_para_tomar_fotos
-10000      nprint_frecuencia_para_imprimir_en_pantalla"""
+10000     nprint_frecuencia_para_imprimir_en_pantalla"""
 
     with open("in.dat", "w") as f:
         f.write(contenido)

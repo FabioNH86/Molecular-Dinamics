@@ -3,11 +3,25 @@ import pandas as pd
 import numpy as np
 import os
 
+
+# -- SELECCIONA EL NÚMERO DE ENSAYO A ANALIZAR --
+# num_prueba = 5
+
 # Limpieza de terminal
 os.system('clear')
 
+# ruta_comun = f'Dinámicas_moleculares/Resultados/P{num_prueba}_LV_Mie'
+
+# # Definimos la ruta de guardado
+# ruta_graficos = os.path.join(ruta_comun, 'Graficos_2')
+
+# # Si la carpeta no existe, la creamos automáticamente
+# if not os.path.exists(ruta_graficos):
+#     os.makedirs(ruta_graficos)
+#     print(f"Carpeta creada: {ruta_graficos}")
+
 # Carga de datos
-todo = pd.read_csv('todo.dat', sep=r'\s+', header=None)
+todo = pd.read_csv('Dinámicas_moleculares/Resultados/P5_LV_Mie/T=1.00/todo_T1-0.dat', sep=r'\s+', header=None)
 
 # Definición de variables por columna
 config      = todo[0]
@@ -25,7 +39,7 @@ n: int = 3 # <----- SELECCIONA LA PROPIEDAD A ANALIZAR
 # mean_pressure_reported = 4.254
 
 # Parámetro de corte para la fase de equilibración
-salto: int = 5000
+salto: int = 100
 
 # --- FIGURA 1: ANÁLISIS DE ENERGÍAS Y DENSIDAD (SUBPLOTS) ---
 fig, axs = plt.subplots(2, 2, figsize=(12, 8), layout='constrained')
@@ -37,7 +51,7 @@ axs[0, 0].set_xlabel('Configuración')
 axs[0, 0].set_ylabel('Energía')
 
 # Panel 2: Energía Potencial (Fase inicial)
-axs[0, 1].plot(config, potential_e, color='tab:red')
+axs[0, 1].plot(config[:salto], potential_e[:salto], color='tab:red')
 #axs[0, 1].axhline(y=mean_potential_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
 axs[0, 1].set_title('Energía Potencial (Equilibración)')
 axs[0, 1].set_xlabel('Configuración')
@@ -51,7 +65,7 @@ axs[1, 0].set_xlabel('Configuración')
 axs[1, 0].set_ylabel('Energía')
 
 # Panel 4: Variación de la Presión (Toda la simulación)
-axs[1, 1].plot(config, pressure, color='tab:green')
+axs[1, 1].plot(config[:salto], pressure[:salto], color='tab:green')
 axs[1, 1].set_title('Evolución de la Densidad')
 #axs[1, 1].axhline(y=mean_pressure_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
 axs[1, 1].set_xlabel('Configuración')
