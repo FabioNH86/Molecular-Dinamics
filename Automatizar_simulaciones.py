@@ -12,9 +12,10 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 Fabio Noriega Hernández
 """
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 6
+num_prueba = 7
 
-temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+#temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+temperaturas = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
 ruta_base = f"Resultados/P{num_prueba}_LV_Mie"
 ejecutable = "./new_mie"
 

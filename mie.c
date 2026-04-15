@@ -1150,55 +1150,55 @@ for(i=1 ; i<=nat ; i++){
    nparticulas[binp] = nparticulas[binp] + 1; 
 }
 
-/* Escribimos las distribuciones promedio en los archivos de salida */
-if (iconf == nconf){
-   gr = fopen("gr_dm.dat", "w");
-   perfil = fopen("perfil_dm.dat", "w"); 
-   nbin = (int)(boxx / deltar);
-   
-   if (dofx == 3){
-      for(i=1 ; i<=nbin-1 ; i++){
-         r = i * deltar;
-         areabin = deltar * boxy * boxz; 
-         nperfil = nparticulas[i] / (areabin * ndist);
-         fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
+   /* Escribimos las distribuciones promedio en los archivos de salida */
+   if (iconf == nconf){
+      gr = fopen("gr_dm.dat", "w");
+      perfil = fopen("perfil_dm.dat", "w"); 
+      nbin = (int)(boxx / deltar);
+      
+      if (dofx == 3){
+         for(i=1 ; i<=nbin-1 ; i++){
+            r = i * deltar;
+            areabin = deltar * boxy * boxz; 
+            nperfil = nparticulas[i] / (areabin * ndist);
+            fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
 
-         rg = r + deltar;
-         factor = (4.0/3.0) * pi * rho;
-         denominador = factor * nat * (pow(rg, 3) - pow(r, 3));
-         rdf = npares[i] / (denominador * ndist);
-         fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);  
+            rg = r + deltar;
+            factor = (4.0/3.0) * pi * rho;
+            denominador = factor * nat * (pow(rg, 3) - pow(r, 3));
+            rdf = npares[i] / (denominador * ndist);
+            fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);  
+         }
       }
-   }
-   else if (dofx == 2){
-      for(i=1 ; i<=nbin-1 ; i++){
-         r = i * deltar;
-         areabin = deltar * boxy; 
-         nperfil = nparticulas[i] / (areabin * ndist);
-         fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
+      else if (dofx == 2){
+         for(i=1 ; i<=nbin-1 ; i++){
+            r = i * deltar;
+            areabin = deltar * boxy; 
+            nperfil = nparticulas[i] / (areabin * ndist);
+            fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
 
-         rg = r + deltar;   
-         factor = pi * rho;
-         denominador = factor * nat * (pow(rg, 2) - pow(r, 2));
-         rdf = npares[i] / (denominador * ndist);
-         fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);   
+            rg = r + deltar;   
+            factor = pi * rho;
+            denominador = factor * nat * (pow(rg, 2) - pow(r, 2));
+            rdf = npares[i] / (denominador * ndist);
+            fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);   
+         }
+      }
+      else if (dofx == 1){
+         for(i=1 ; i<=nbin-1 ; i++){
+            r = i * deltar;
+            areabin = deltar; 
+            nperfil = nparticulas[i] / (areabin * ndist);
+            fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
+            
+            rg = r + deltar;         
+            factor = 2.0 * rho;
+            denominador = factor * nat * deltar;
+            rdf = npares[i] / (denominador * ndist);
+            fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);   
+         }
       }
    }
-   else if (dofx == 1){
-      for(i=1 ; i<=nbin-1 ; i++){
-         r = i * deltar;
-         areabin = deltar; 
-         nperfil = nparticulas[i] / (areabin * ndist);
-         fprintf(perfil,"%9.5lf %12.5lf\n", r, nperfil);
-         
-         rg = r + deltar;         
-         factor = 2.0 * rho;
-         denominador = factor * nat * deltar;
-         rdf = npares[i] / (denominador * ndist);
-         fprintf(gr,"%9.5lf %12.5lf\n", r, rdf);   
-      }
-   }
-}
       
 return;         
 }         

@@ -118,12 +118,9 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
             # Por lo tanto el dataframe debe ser (numero de bines x configuraciones)
             todas_las_densidades.append(densidades_por_bin)
 
-        
-        
-
         densidades_por_configuracion = pd.DataFrame(todas_las_densidades)
 
-        ultimas_densidades = densidades_por_configuracion.iloc[-500000:]
+        ultimas_densidades = densidades_por_configuracion.iloc[-100000:]
 
         #perfil_promedio = densidades_por_configuracion.mean(axis=0) 
         perfil_promedio = ultimas_densidades.mean()
