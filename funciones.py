@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import io
-import matplotlib.pyplot as plt
+
 
 def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=3000, num_bines=100):
     with open(filename, 'r') as f:
@@ -139,4 +139,21 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
 
             
                 
+def calcular_promedios_energía(archivo, ancho_bloques=10, variacion_permitida=0.03):
+    # Leemos el archivo 
+    try:
+        todo = pd.read_csv(archivo, header=None, sep=r'\s+')
+        #print(todo.head())
+    except FileNotFoundError:
+        print(f"No se encontró el archivo en: {archivo} \n")
+        return None
 
+
+    # Eliminamos la columna de la densidad
+    energias = todo.drop(columns=[1])
+    energias.columns = ['iconf', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
+    #print(energias.head())
+
+    try: # Se calcula el prmedio cada ancho_bloques
+        energias.iloc[:ancho_bloques].mean() 
+    except
