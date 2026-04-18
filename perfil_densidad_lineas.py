@@ -19,7 +19,7 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 7
+entrada = 8
 num_prueba = int(entrada)
 num_bines = 90 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 num_conf_buscado = 500000
@@ -34,7 +34,7 @@ Lz = 15.874
 
 # Lista de Temperaturas
 #temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas_originales = [0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
+temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
 

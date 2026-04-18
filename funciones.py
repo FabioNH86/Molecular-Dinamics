@@ -154,6 +154,7 @@ def calcular_promedios_energía(archivo, ancho_bloques=10, variacion_permitida=0
     energias.columns = ['iconf', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
     #print(energias.head())
 
-    try: # Se calcula el prmedio cada ancho_bloques
+    try: # Se calcula el promedio cada ancho_bloques
         energias.iloc[:ancho_bloques].mean() 
-    except
+    except:
+        pass
