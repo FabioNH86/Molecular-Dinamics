@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import glob
 
-os.system('clear')
+os.system('cls' if os.name == 'nt' else 'clear')
 
 """
 Este programa busca hacer un análisis de datos para replicar los datos de simulación de la NIST mediante MD (Dinámica Molecular).
@@ -23,7 +23,7 @@ num_bines = 50 # Establece el número de fracciones en que se dividirá la caja 
 
 # Lista de Temperaturas
 # temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
+temperaturas_originales = [0.60]
 
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 

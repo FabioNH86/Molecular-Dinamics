@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
+from numpy.polynomial import polynomial as P
 import io
+import sys
 
 
 def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=3000, num_bines=100):
@@ -139,11 +141,11 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
 
             
                 
-def calcular_promedios_energía(archivo, ancho_bloques=10, variacion_permitida=0.03):
+def calcular_promedios_energía(archivo, ancho_bloques=100000, variacion_permitida=0.03):
     # Leemos el archivo 
     try:
         todo = pd.read_csv(archivo, header=None, sep=r'\s+')
-        #print(todo.head())
+        print(f"Trabajando en: {archivo}")
     except FileNotFoundError:
         print(f"No se encontró el archivo en: {archivo} \n")
         return None
@@ -154,7 +156,212 @@ def calcular_promedios_energía(archivo, ancho_bloques=10, variacion_permitida=0
     energias.columns = ['iconf', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
     #print(energias.head())
 
+    ultimo_etot_promedio = None 
+    ultimo_eki_promedio = None 
+    ultimo_epi_promedio = None
+
+
+    print(f"{'Configuración':<13} | {'E_total':<15} | {'E_Cinetica':<15} | {'E_Potencial':<15}")
+    print("-" * 65)
+
     try: # Se calcula el promedio cada ancho_bloques
-        energias.iloc[:ancho_bloques].mean() 
-    except:
-        pass
+        for i in range(0, len(energias), ancho_bloques):
+            bloque = energias.iloc[i: i + ancho_bloques]
+
+            # Si por alguna razón no se completa el último bloque
+            if len(bloque) < ancho_bloques:
+                break # Se evita su cálculo
+
+            resumen_bloque = bloque.drop(columns=['iconf']).mean()
+
+
+            # Se extrae el valor de la energía total    
+            promedio_etot_actual = resumen_bloque['etot']
+            promedio_eki_actual = resumen_bloque['eki']
+            promedio_epi_actual = resumen_bloque['epi']
+            configuracion_inicial = bloque['iconf'].iloc[0]
+
+            if ultimo_etot_promedio is not None and ultimo_eki_promedio is not None and ultimo_epi_promedio is not None: 
+                # Se calula la variación relativa
+                variacion_etot = abs((promedio_etot_actual - ultimo_etot_promedio) / ultimo_etot_promedio)
+                variacion_eki = abs((promedio_eki_actual - ultimo_eki_promedio) / ultimo_eki_promedio)
+                variacion_epi = abs((promedio_epi_actual - ultimo_epi_promedio) / ultimo_epi_promedio)
+
+                # Imprimimos el progreso
+                print(f"{configuracion_inicial:<13.2f} | {promedio_etot_actual:<15.2f} | {promedio_eki_actual:<15.2f} | {promedio_epi_actual:<15.2f}")
+
+
+                # if variacion_etot <= variacion_permitida and variacion_eki <= variacion_permitida and variacion_epi <= variacion_permitida:
+                #     print(f"\n✅ ¡Estabilidad encontrada!")
+                #     print(f"La configuración '{configuracion_inicial}' es la primera con variación < {variacion_permitida}")
+                #     return configuracion_inicial # Retorna la iconf donde se cumple
+                if (bloque_es_estable(bloque['etot']) and
+                    bloque_es_estable(bloque['eki']) and
+                    bloque_es_estable(bloque['epi']) and
+                    variacion_etot <= variacion_permitida and 
+                    variacion_eki <= variacion_permitida and 
+                    variacion_epi <= variacion_permitida):
+                    print(f"✅ Estabilidad encontrada en configuración {configuracion_inicial}")
+                    return configuracion_inicial
+        
+            ultimo_etot_promedio = promedio_etot_actual
+            ultimo_eki_promedio = promedio_eki_actual
+            ultimo_epi_promedio = promedio_epi_actual
+
+
+        print("\n❌ No se encontró ninguna configuración con esa estabilidad.")
+        return None
+        
+    except ValueError:
+        print("Error en el cálculo!")
+
+
+def bloque_es_estable(valores, umbral_pendiente=0.0000001):
+    x = np.arange(len(valores))
+
+    # Ajuste lineal: coef[1] es la pendiente normalizada
+    coef = np.polyfit(x, valores, 1)
+    pendiente_normalizada = abs(coef[0] / np.mean(valores))
+    return pendiente_normalizada < umbral_pendiente
+
+
+def calcular_promedios_energía_claude(archivo, ancho_bloques=1000, variacion_permitida=0.03, bloques_consecutivos=5):
+    try:
+        todo = pd.read_csv(archivo, header=None, sep=r'\s+')
+        print(f"Trabajando en: {archivo}")
+    except FileNotFoundError:
+        print(f"No se encontró el archivo en: {archivo}")
+        return None
+
+    energias = todo.drop(columns=[1])
+    energias.columns = ['iconf', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
+
+    # Calcular promedios por bloque
+    bloques = []
+    for i in range(0, len(energias), ancho_bloques):
+        bloque = energias.iloc[i: i + ancho_bloques]
+        if len(bloque) < ancho_bloques:
+            break
+        resumen = bloque.drop(columns=['iconf']).mean()
+        resumen['iconf_ini'] = bloque['iconf'].iloc[0]
+        bloques.append(resumen)
+
+    bloques_df = pd.DataFrame(bloques).reset_index(drop=True)
+
+    print(f"{'Configuración':<13} | {'E_total':<15} | {'E_Cinetica':<15} | {'E_Potencial':<15}")
+    print("-" * 65)
+
+    # Buscar la primera configuración desde donde TODOS los bloques
+    # siguientes son estables (variación < umbral entre bloques consecutivos)
+    primer_bloque_estable = None
+
+    for i in range(1, len(bloques_df)):
+        prev = bloques_df.iloc[i - 1]
+        curr = bloques_df.iloc[i]
+
+        var_etot = abs((curr['etot'] - prev['etot']) / prev['etot']) if prev['etot'] != 0 else float('inf')
+        var_eki  = abs((curr['eki']  - prev['eki'])  / prev['eki'])  if prev['eki']  != 0 else float('inf')
+        var_epi  = abs((curr['epi']  - prev['epi'])  / prev['epi'])  if prev['epi']  != 0 else float('inf')
+
+        estable = var_etot <= variacion_permitida and var_eki <= variacion_permitida and var_epi <= variacion_permitida
+
+        marca = "✅" if estable else "❌"
+        print(f"{curr['iconf_ini']:<13.0f} | {curr['etot']:<15.4f} | {curr['eki']:<15.4f} | {curr['epi']:<15.4f} {marca}")
+
+    # Buscar desde qué índice TODOS los bloques restantes son estables
+    for i in range(1, len(bloques_df) - bloques_consecutivos + 1):
+        ventana = []
+        for j in range(i, i + bloques_consecutivos):
+            prev = bloques_df.iloc[j - 1]
+            curr = bloques_df.iloc[j]
+
+            var_etot = abs((curr['etot'] - prev['etot']) / prev['etot']) if prev['etot'] != 0 else float('inf')
+            var_eki  = abs((curr['eki']  - prev['eki'])  / prev['eki'])  if prev['eki']  != 0 else float('inf')
+            var_epi  = abs((curr['epi']  - prev['epi'])  / prev['epi'])  if prev['epi']  != 0 else float('inf')
+
+            ventana.append(var_etot <= variacion_permitida and
+                           var_eki  <= variacion_permitida and
+                           var_epi  <= variacion_permitida)
+
+        # Solo cuenta si además los bloques FINALES también son estables
+        bloques_finales_estables = all(ventana) and all(
+            abs((bloques_df.iloc[j]['etot'] - bloques_df.iloc[j-1]['etot']) / bloques_df.iloc[j-1]['etot']) <= variacion_permitida
+            for j in range(i, len(bloques_df))
+            if bloques_df.iloc[j-1]['etot'] != 0
+        )
+
+        if bloques_finales_estables:
+            primer_bloque_estable = bloques_df.iloc[i]['iconf_ini']
+            break
+
+    if primer_bloque_estable:
+        print(f"\n✅ Estabilidad sostenida desde la configuración: {primer_bloque_estable:.0f}")
+        return primer_bloque_estable
+    else:
+        print("\n❌ No se encontró estabilidad sostenida hasta el final.")
+        return None
+
+def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_permitida=0.03, fraccion_cola=0.2):
+    try:
+        todo = pd.read_csv(archivo, header=None, sep=r'\s+')
+    except FileNotFoundError:
+        print(f"No se encontró el archivo en: {archivo}")
+        return None
+
+    energias = todo.drop(columns=[1])
+    energias.columns = ['iconf', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
+
+    # Calcular promedios por bloque
+    bloques = []
+    for i in range(0, len(energias), ancho_bloques):
+        bloque = energias.iloc[i: i + ancho_bloques]
+        if len(bloque) < ancho_bloques:
+            break
+        resumen = bloque.drop(columns=['iconf']).mean()
+        resumen['iconf_ini'] = bloque['iconf'].iloc[0]
+        bloques.append(resumen)
+
+    bloques_df = pd.DataFrame(bloques).reset_index(drop=True)
+
+    # ✅ Referencia: promedio del último 20% de los datos (la "cola" equilibrada)
+    n_cola = max(1, int(len(bloques_df) * fraccion_cola))
+    referencia = bloques_df.tail(n_cola)[['etot', 'eki', 'epi']].mean()
+
+    print(f"\nReferencia (promedio del último {fraccion_cola*100:.0f}%):")
+    print(f"  E_total={referencia['etot']:.4f} | E_cin={referencia['eki']:.4f} | E_pot={referencia['epi']:.4f}")
+
+    print(f"\n{'Configuración':<13} | {'E_total':<15} | {'E_Cinetica':<15} | {'E_Potencial':<15}")
+    print("-" * 65)
+
+    primer_bloque_estable = None
+
+    for i, row in bloques_df.iterrows():
+        # Variación respecto al promedio de la cola final
+        var_etot = abs((row['etot'] - referencia['etot']) / referencia['etot'])
+        var_eki  = abs((row['eki']  - referencia['eki'])  / referencia['eki'])
+        var_epi  = abs((row['epi']  - referencia['epi'])  / referencia['epi'])
+
+        estable = var_etot <= variacion_permitida and var_eki <= variacion_permitida and var_epi <= variacion_permitida
+        marca = "✅" if estable else "❌"
+
+        print(f"{row['iconf_ini']:<13.0f} | {row['etot']:<15.4f} | {row['eki']:<15.4f} | {row['epi']:<15.4f} {marca}")
+
+        # Primera configuración estable desde la que TODOS los siguientes también lo son
+        if estable and primer_bloque_estable is None:
+            # Verificar que todos los bloques restantes también sean estables
+            resto = bloques_df.iloc[i:]
+            todos_estables = all(
+                abs((r['etot'] - referencia['etot']) / referencia['etot']) <= variacion_permitida and
+                abs((r['eki']  - referencia['eki'])  / referencia['eki'])  <= variacion_permitida and
+                abs((r['epi']  - referencia['epi'])  / referencia['epi'])  <= variacion_permitida
+                for _, r in resto.iterrows()
+            )
+            if todos_estables:
+                primer_bloque_estable = row['iconf_ini']
+
+    if primer_bloque_estable:
+        print(f"\n✅ Sistema estabilizado desde la configuración: {primer_bloque_estable:.0f}")
+    else:
+        print(f"\n❌ No se encontró estabilidad sostenida. Considera aumentar variacion_permitida o ancho_bloques.")
+
+    return primer_bloque_estable
