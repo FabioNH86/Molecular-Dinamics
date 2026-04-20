@@ -18,7 +18,7 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 8
+entrada = 9
 num_prueba = int(entrada)
 num_bines = 100 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 un_tercio = num_bines // 3

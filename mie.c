@@ -648,13 +648,13 @@ int ndivz) {  // Esta función permite tener relaciones de aspecto 2:1 o menores
       printf("Densidad volumétrica reducida global: %lf \n", *rho);
 
       // En esta version se genera un volumen interno para distribuir las partículas.
-      minibox_x = boxx / 4.0; // La caja se divide en 4 partes sobe el eje x
-      volumen_minibox = (2.0 * minibox_x) * boxy * boxz;  // La minibox debe tener dimensiones iguales en los 3 ejes
+      minibox_x = boxx / 2.0; // La caja se divide en 4 partes sobe el eje x
+      volumen_minibox = minibox_x * boxy * boxz;  // La minibox debe tener dimensiones iguales en los 3 ejes
       minibox_rho = (*nat) / volumen_minibox;
       printf("Densidad volumetrica reducida de la mini caja centrada: %lf \n", minibox_rho);
 
       // Calculamos la distancia entre partículas
-      deltax = (2.0 * minibox_x) / ndivx;
+      deltax = minibox_x / ndivx;
       deltay = boxy / ndivy;
       deltaz = boxz / ndivz;
 
