@@ -15,14 +15,14 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 Fabio Noriega Hernández
 """
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 9
+num_prueba = 1
 
 
 temperatura = 0.7
-densidades = [round(x, 3) for x in np.arange(0.005, 0.9, 0.105)]
+densidades = [round(x, 3) for x in np.arange(0.001, 0.1, 0.01)]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
-ruta_base = f"Resultados/Isortermas"
+ruta_base = f"Resultados/Isortermas/Ronda_{num_prueba}"
 ejecutable = "./mie_exec"
 
 

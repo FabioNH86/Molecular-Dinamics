@@ -4,6 +4,9 @@ from numpy.polynomial import polynomial as P
 import io
 import matplotlib.pyplot as plt
 import math
+import os
+import glob
+
 
 
 def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mitad'):
@@ -38,8 +41,6 @@ def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mi
 
 
     return [nx, ny, nz]
-
-
 
 
 def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
@@ -77,6 +78,7 @@ def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
         f.write(contenido)
 
     print("--- Iniciando batería de simulaciones ---")
+
 
 def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=3000, num_bines=100):
     with open(filename, 'r') as f:
@@ -487,3 +489,30 @@ def calcular_tension_superficial(df_presiones, longitud_partpendicular_interface
     tension_superficial = (longitud_partpendicular_interface / 2) * factor_presiones
 
     print(f'La tensión superficial es: {tension_superficial:.4f}')
+
+
+def generar_dataframes_todo(archivo):
+    # Extraemos la información de cada configuración
+    todo = pd.read_csv(archivo, sep='\s+', header=None)
+    
+    todo.columns = ['iconf','rho', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
+    
+    return todo
+
+    
+def calcular_capacidad_calorífica(dataframe, T=0.7):
+    kB = 1.0
+    
+    # Cv = (<U²> - <U>²) / kB * T
+
+    eki = dataframe['eki']
+    # <U²>
+    promedio_cuadrado = np.mean(np.square(eki))
+
+    #  <U>²
+    cuadrado_del_promedio = np.square(eki.mean())
+
+    Cv_total = (promedio_cuadrado - cuadrado_del_promedio) / (kB * T**2)
+
+    print(f'La capacidad calorifica es: {Cv_total}')
+    return Cv_total
