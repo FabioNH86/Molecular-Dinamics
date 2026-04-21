@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from numpy.polynomial import polynomial as P
 import io
-import sys
+import matplotlib.pyplot as plt
 
 
 def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=3000, num_bines=100):
@@ -131,16 +131,6 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
     return centros_x, perfil_promedio, desviacion_estandar
 
 
-
-
-
-# centros, perfil_prom, desv = calcular_densidades('movie.gro')
-# plt.plot(centros, perfil_prom)
-# plt.show()
-
-
-            
-                
 def calcular_promedios_energía(archivo, ancho_bloques=100000, variacion_permitida=0.03):
     # Leemos el archivo 
     try:
@@ -301,7 +291,9 @@ def calcular_promedios_energía_claude(archivo, ancho_bloques=1000, variacion_pe
         print("\n❌ No se encontró estabilidad sostenida hasta el final.")
         return None
 
-def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_permitida=0.03, fraccion_cola=0.2):
+
+def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
+
     try:
         todo = pd.read_csv(archivo, header=None, sep=r'\s+')
     except FileNotFoundError:
@@ -330,8 +322,9 @@ def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_
     print(f"\nReferencia (promedio del último {fraccion_cola*100:.0f}%):")
     print(f"  E_total={referencia['etot']:.4f} | E_cin={referencia['eki']:.4f} | E_pot={referencia['epi']:.4f}")
 
-    print(f"\n{'Configuración':<13} | {'E_total':<15} | {'E_Cinetica':<15} | {'E_Potencial':<15}")
-    print("-" * 65)
+    if mostrar_progreso:
+        print(f"\n{'Configuración':<13} | {'E_total':<15} | {'E_Cinetica':<15} | {'E_Potencial':<15}")
+        print("-" * 65)
 
     primer_bloque_estable = None
 
@@ -344,7 +337,8 @@ def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_
         estable = var_etot <= variacion_permitida and var_eki <= variacion_permitida and var_epi <= variacion_permitida
         marca = "✅" if estable else "❌"
 
-        print(f"{row['iconf_ini']:<13.0f} | {row['etot']:<15.4f} | {row['eki']:<15.4f} | {row['epi']:<15.4f} {marca}")
+        if mostrar_progreso:
+            print(f"{row['iconf_ini']:<13.0f} | {row['etot']:<15.4f} | {row['eki']:<15.4f} | {row['epi']:<15.4f} {marca}")
 
         # Primera configuración estable desde la que TODOS los siguientes también lo son
         if estable and primer_bloque_estable is None:
@@ -364,4 +358,59 @@ def calcular_promedios_energía_claude_2(archivo, ancho_bloques=1000, variacion_
     else:
         print(f"\n❌ No se encontró estabilidad sostenida. Considera aumentar variacion_permitida o ancho_bloques.")
 
-    return primer_bloque_estable
+    if primer_bloque_estable is not None:
+        return int(primer_bloque_estable)
+
+
+def calcular_presiones_vapor(archivo, configuraciones_consideradas=500000, eje_perpendicular_interface='x'): # configuraciones_consideradas: Se refieren a aquellas que ocurren después de alcanzado el equilibrio
+    try:                                                              # Para conocer la configuración a la que se alcanzó el equilibrio, usar función calcular_promedios_energía
+        presiones = pd.read_csv(archivo, header=None, sep=r'\s+')
+        print(f"Trabajando presiones en: {archivo}")
+    except FileNotFoundError:
+        print(f"No se encontró el archivo en: {archivo} \n")
+        return None
+    
+    presiones = presiones.drop(columns=[0])
+    presiones.columns = ['x', 'y', 'z'] # Se asignan nómbres a los ejes
+
+    # Filtrado 
+    presiones = presiones.tail(configuraciones_consideradas)
+
+    presión_vapor = presiones[eje_perpendicular_interface].mean()
+    p_desv_estand = presiones[eje_perpendicular_interface].std()
+
+    print(f'La presión de vapor promedio es: {presión_vapor:.4f}')
+    print(f'Con una desviación estándar de: {p_desv_estand:.4f}')
+
+    return presiones, presión_vapor
+
+
+def graficar_evolucion_presion(df_presiones):
+    # Creamos una figura con 3 subgráficos verticales
+    fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+    
+    ejes = ['x', 'y', 'z']
+    colores = ['#e74c3c', '#2ecc71', '#3498db'] # Rojo, Verde, Azul
+    
+    for i, eje in enumerate(ejes):
+        axes[i].plot(df_presiones[eje], color=colores[i], linewidth=0.5, alpha=0.8)
+        axes[i].set_ylabel(f'Presión {eje.upper()}')
+        axes[i].grid(True, linestyle='--', alpha=0.6)
+        axes[i].legend([f'Eje {eje}'], loc='upper right')
+
+    axes[2].set_xlabel('Configuraciones')
+    fig.suptitle('Evolución Temporal de la Presión por Eje', fontsize=16)
+    
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
+
+
+def calcular_tension_superficial(df_presiones, longitud_partpendicular_interface):
+    presion_x = df_presiones['x'].mean()
+    presion_y = df_presiones['y'].mean()
+    presion_z = df_presiones['z'].mean()
+
+    factor_presiones = presion_x - 0.5 * (presion_y + presion_y)
+    tension_superficial = (longitud_partpendicular_interface / 2) * factor_presiones
+
+    print(f'La tensión superficial es: {tension_superficial:.4f}')

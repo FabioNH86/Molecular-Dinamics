@@ -92,6 +92,9 @@ for T in temperaturas_originales:
 
     print(f"T={T:.2f} | rho_L: {rho_liquido:.4f} (std: {std_rho_liquido:.4e}) | rho_V: {rho_vapor:.4f} (std: {std_rho_vapor:.4e})")
 
+    print("="*100)
+    print('\n')
+
     # # --- GRÁFICO SCATTER (PROYECCIÓN XY) ---
     # plt.figure(figsize=(10, 4)) # Más alargado para resaltar la caja de simulación
     # plt.scatter(atomos['X'], atomos['Y'], s=2, alpha=0.4, c='dodgerblue', edgecolors='none')
