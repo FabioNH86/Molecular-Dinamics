@@ -9,7 +9,7 @@ import glob
 
 
 
-def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mitad'):
+def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mitad', densidad_global=True):
     # De esta manera se calcula la densidad pero respecto a la minibox donde se distribuirán las partículas
     if tamaño_minibox.lower() == 'mitad': 
         volumen_minibox = volumen / 2
@@ -23,9 +23,13 @@ def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mi
         raise ValueError(f"Error: '{tamaño_minibox}' no es una opción válida. Usa 'mitad', 'tercio' o 'uniforme'.")
         
 
-    # Se calcula el número de partículas necesario para satisfacer la densidad
-    # Se redonde a entero
-    n_partículas = int(densidad * volumen_minibox)
+    if densidad_global:
+        n_partículas = int(densidad * volumen)
+    
+    else:
+        # Se calcula el número de partículas necesario para satisfacer la densidad
+        # Se redonde a entero
+        n_partículas = int(densidad * volumen_minibox)
 
     # Asumiendo que se usará una minibox de dimensiones iguales (Lx=Ly=Lz)
         # Se calcula la raíz cuadrada de las partículas totales
@@ -504,9 +508,9 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
     kB = 1.0
     
     # Cv = (<U²> - <U>²) / kB * T
-
     eki = dataframe['eki']
-    # <U²>
+    
+    #  <U²>
     promedio_cuadrado = np.mean(np.square(eki))
 
     #  <U>²
