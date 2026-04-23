@@ -6,7 +6,7 @@ from funciones import actualizar_entradas
 
 
 """
-Este código se encargar de automatizar simulaciones alterando el archivo in.dat después de cada 
+Este código se encarga de automatizar simulaciones alterando el archivo in.dat después de cada 
 corrida según una lista de temperaturas pre-asignadas. 
 La simulación es llevada acabo por el ejecutable `mie`. Los archivos generados se guardan automáticamente
 (movie.gro, presiones.dat, resumen.dat, todo.dat y xyz.dat) 

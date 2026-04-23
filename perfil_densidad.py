@@ -18,7 +18,7 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 9
+entrada = 10
 num_prueba = int(entrada)
 num_bines = 100 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 un_tercio = num_bines // 3
@@ -27,8 +27,8 @@ un_tercio = num_bines // 3
 # nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, *, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
 # nist_rho_l = [8.643e-01, 8.426e-01, 8.203e-01, 7.970e-01, 7.728e-01, 7.474e-01, 7.203e-01, *, 6.592e-01, 6.233e-01, 5.807e-01, 5.238e-01, 4.367e-01]
 
-nist_rho_v = [8.450e-04, 3.508e-03, 1.004e-02, 2.304e-02, 4.664e-02, 6.489e-02, 1.310e-01]
-nist_rho_l = [8.643e-01, 8.203e-01, 7.728e-01, 7.203e-01, 6.592e-01, 6.233e-01, 5.238e-01]
+nist_rho_v = [8.450e-04]
+nist_rho_l = [8.643e-01]
 
 
     # Valores de error de la NIST
@@ -38,7 +38,7 @@ errores_nist_l = []
 
 # Lista de Temperaturas
 #temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas_originales = [0.70, 0.80, 0.90, 1.00, 1.10]
+temperaturas_originales = [0.60]
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
 ruta_comun = f'Resultados/P{num_prueba}_LV_Mie'

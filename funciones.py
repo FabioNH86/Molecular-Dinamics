@@ -50,7 +50,7 @@ def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mi
 def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
     if densidad_constante:
         #"""Modifica el archivo in.dat con una temperatura seleccionada."""
-        ndiv = [30, 10, 10]
+        ndiv = [28, 14, 14]
 
     else: 
         ndiv = generar_dimensiones_partículas(densidad=densidad)
@@ -59,24 +59,24 @@ def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
     ndiv_str = f"{ndiv[0]:<3} {ndiv[1]:<3} {ndiv[2]:<3}"
     
     contenido = f"""2         ncolectivo_1_NVE_2_NVT_3_NPT
-    1         nopcion_1_inicializacion_2_continuacion
-    3         dofx_numero_de_dimensiones
-    12.0      expn_exponente_para_la_parte_repulsiva_12_para_LJ
-    6.0       expm_exponente_para_la_parte_atractiva_6_en_general
-    0.001     time_tiempo_de_integracion
-    40 20 20  Lx_Ly_Lz_en_unidades_reducidas
-    {ndiv_str:<10}ndivx_ndivy_ndivz_numero_de_atomos_por_lado
-    {temp:<10.2f}temp_en_unidades_reducidas_para_asignar_velocidades
-    0.01      taut_para_termostato_berendsen
-    0.0       presion_en_unidades_reducidas_para_presostato
-    0.0       taup_para_presostato_berendsen
-    4.0       rcut_r_de_corte_del_potencial_menor_a_la_mitad_de_la_caja
-    500000    nconfequi_numero_de_configuraciones_para_equilibrar
-    1500000   nconf_numero_de_configuraciones
-    50000     nperfil_frecuencia_para_calcular_distribuciones
-    0.1       deltar_ancho_del_intervalo_para_perfil_de_densidad
-    10000     nmovie_frecuencia_para_tomar_fotos
-    10000     nprint_frecuencia_para_imprimir_en_pantalla"""
+1         nopcion_1_inicializacion_2_continuacion
+3         dofx_numero_de_dimensiones
+12.0      expn_exponente_para_la_parte_repulsiva_12_para_LJ
+6.0       expm_exponente_para_la_parte_atractiva_6_en_general
+0.001     time_tiempo_de_integracion
+48.92 24.46 24.46  Lx_Ly_Lz_en_unidades_reducidas
+{ndiv_str:<10}  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
+{temp:<10.2f}   temp_en_unidades_reducidas_para_asignar_velocidades
+0.01      taut_para_termostato_berendsen
+0.0       presion_en_unidades_reducidas_para_presostato
+0.0       taup_para_presostato_berendsen
+4.0       rcut_r_de_corte_del_potencial_menor_a_la_mitad_de_la_caja
+500000    nconfequi_numero_de_configuraciones_para_equilibrar
+1500000   nconf_numero_de_configuraciones
+50000     nperfil_frecuencia_para_calcular_distribuciones
+0.1       deltar_ancho_del_intervalo_para_perfil_de_densidad
+10000     nmovie_frecuencia_para_tomar_fotos
+10000     nprint_frecuencia_para_imprimir_en_pantalla"""
 
     with open("in.dat", "w") as f:
         f.write(contenido)

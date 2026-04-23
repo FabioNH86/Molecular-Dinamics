@@ -26,7 +26,11 @@ void crear_posiciones_centradas_rectangularmente_tercios(int *nat, double *rho, 
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz);
 
-void crear_posiciones_centradas_rectangularmente_cuartos(int *nat, double *rho, int dofx, double rx[], double ry[],
+void crear_posiciones_centradas_rectangularmente_mitad(int *nat, double *rho, int dofx, double rx[], double ry[],
+double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
+int ndivz);
+
+void crear_posiciones_mas_espacio_líquido(int *nat, double *rho, int dofx, double rx[], double ry[],
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz);
 
@@ -198,7 +202,7 @@ if (rcut >= (0.5*ladomenor)){
 
 /* Creamos las posiciones y velocidades iniciales si es primer corrida */   
 if (nopcion == 1){
-   crear_posiciones_uniformemente(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
+   crear_posiciones_mas_espacio_líquido(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
    ndivy, ndivz);
    crear_velocidades(nat, dofx, amasa, temp, vx, vy, vz);
 }
@@ -631,14 +635,14 @@ int ndivz) {
    return;
 }
 
-void crear_posiciones_centradas_rectangularmente_cuartos(int *nat, double *rho, int dofx, double rx[], double ry[],
+void crear_posiciones_centradas_rectangularmente_mitad(int *nat, double *rho, int dofx, double rx[], double ry[],
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz) {  // Esta función permite tener relaciones de aspecto 2:1 o menores a 3:1 sin que las energías potenciales se disparen
    double volumen_caja, longitud, area, deltax, deltay, deltaz;
    double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x;
    int i, j, k, n; 
 
-   printf("Creando configuración centrada (dividida en 4)... \n");
+   printf("Creando configuración centrada (dividida en 2)... \n");
    if (dofx == 3) {
       // Para 3D
       // Calculamos el volumen total de la caja
@@ -673,7 +677,7 @@ int ndivz) {  // Esta función permite tener relaciones de aspecto 2:1 o menores
 
       // Centramos las posiciones simetricamente respecto al centro de la caja
       for(i=1; i<=(*nat) ; i++){
-         rx[i] = rx[i] - 1.0 * minibox_x;
+         rx[i] = rx[i] - 0.5 * minibox_x;
          ry[i] = ry[i] - 0.5 * boxy;
          rz[i] = rz[i] - 0.5 * boxz;
       }  
@@ -740,6 +744,60 @@ int ndivz) {  // Esta función permite tener relaciones de aspecto 2:1 o menores
          ry[i] = 0.0;
          rz[i] = 0.0;
       }   
+   }
+
+   return;
+}
+
+void crear_posiciones_mas_espacio_líquido(int *nat, double *rho, int dofx, double rx[], double ry[],
+double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
+int ndivz) {
+   double volumen_caja, longitud, area, deltax, deltay, deltaz, divisiones_box, secciones_para_minibox;
+   double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x;
+   int i, j, k, n; 
+
+   divisiones_box = 6.0; // <-- Señala el número de divisiones que quieres para la caja 
+   secciones_para_minibox = 4.0; // Cuántas de esas divisiones corresponden a la minibox
+
+   printf("Creando configuración centrada (dividida en %lf)... \n", divisiones_box);
+   if (dofx == 3) {
+      // Para 3D
+      // Calculamos el volumen total de la caja
+      volumen_caja = boxx * boxy * boxz; 
+      *nat = ndivx * ndivy * ndivz; // Se obtiene el número de átomos
+      *rho = (*nat) / volumen_caja;    
+      printf("Densidad volumétrica reducida global: %lf \n", *rho);
+
+      // En esta version se genera un volumen interno para distribuir las partículas.
+      minibox_x = boxx / divisiones_box; // La caja se divide en partes sobe el eje x
+      volumen_minibox = (minibox_x * secciones_para_minibox) * boxy * boxz;  // Se toma la sección de la caja en la que se colocarán las partículas (minibox)
+      minibox_rho = (*nat) / volumen_minibox;
+      printf("Densidad volumetrica reducida de la mini caja centrada: %lf \n", minibox_rho);
+
+      // Calculamos la distancia entre partículas
+      deltax = minibox_x / ndivx;
+      deltay = boxy / ndivy;
+      deltaz = boxz / ndivz;
+
+      // Creamos las posiciones iniciales de las particulas dentro de la mini-box
+      n = 0;
+      for(i=1; i<=ndivx ; i++){
+         for(j=1; j<=ndivy ; j++){
+            for(k=1; k<=ndivz ; k++){
+               n += 1;
+               rx[n] = (i-1) * deltax + 0.5;
+               ry[n] = (j-1) * deltay + 0.5;
+               rz[n] = (k-1) * deltaz + 0.5;
+            }
+         }
+      }
+
+      // Centramos las posiciones simetricamente respecto al centro de la caja
+      for(i=1; i<=(*nat) ; i++){
+         rx[i] = rx[i] - 0.5 * minibox_x;
+         ry[i] = ry[i] - 0.5 * boxy;
+         rz[i] = rz[i] - 0.5 * boxz;
+      }  
    }
 
    return;
