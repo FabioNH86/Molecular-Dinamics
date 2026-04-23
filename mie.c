@@ -752,8 +752,8 @@ int ndivz) {  // Esta función permite tener relaciones de aspecto 2:1 o menores
 void crear_posiciones_mas_espacio_líquido(int *nat, double *rho, int dofx, double rx[], double ry[],
 double rz[], double boxx, double boxy, double boxz, int ndivx, int ndivy, 
 int ndivz) {
-   double volumen_caja, longitud, area, deltax, deltay, deltaz, divisiones_box, secciones_para_minibox;
-   double volumen_minibox, minibox_rho, area_minibox, longitud_minibox, minibox_x;
+   double volumen_caja, longitud, area, deltax, deltay, deltaz, divisiones_box, secciones_para_minibox, longitud_minibox_x;
+   double volumen_minibox, minibox_rho, area_mini, longitud_mini, minibox_x;
    int i, j, k, n; 
 
    divisiones_box = 6.0; // <-- Señala el número de divisiones que quieres para la caja 
@@ -769,15 +769,19 @@ int ndivz) {
       printf("Densidad volumétrica reducida global: %lf \n", *rho);
 
       // En esta version se genera un volumen interno para distribuir las partículas.
-      minibox_x = boxx / divisiones_box; // La caja se divide en partes sobe el eje x
-      volumen_minibox = (minibox_x * secciones_para_minibox) * boxy * boxz;  // Se toma la sección de la caja en la que se colocarán las partículas (minibox)
+      longitud_minibox_x = (boxx / divisiones_box) * secciones_para_minibox;
+
+      volumen_minibox = longitud_minibox_x * boxy * boxz;  // Se toma la sección de la caja en la que se colocarán las partículas (minibox)
       minibox_rho = (*nat) / volumen_minibox;
-      printf("Densidad volumetrica reducida de la mini caja centrada: %lf \n", minibox_rho);
+      printf("Densidad volumetrica reducida de minibox: %lf \n", minibox_rho);
 
       // Calculamos la distancia entre partículas
-      deltax = minibox_x / ndivx;
+      deltax = longitud_minibox_x / ndivx;
       deltay = boxy / ndivy;
       deltaz = boxz / ndivz;
+
+      // Inicio de la minibox centrada en X
+      double inicio_x = (boxx - longitud_minibox_x) / 2.0; // = boxx/6
 
       // Creamos las posiciones iniciales de las particulas dentro de la mini-box
       n = 0;
@@ -785,16 +789,16 @@ int ndivz) {
          for(j=1; j<=ndivy ; j++){
             for(k=1; k<=ndivz ; k++){
                n += 1;
-               rx[n] = (i-1) * deltax + 0.5;
-               ry[n] = (j-1) * deltay + 0.5;
-               rz[n] = (k-1) * deltaz + 0.5;
+               rx[n] = (i-1) * deltax + (deltax / 2.0);
+               ry[n] = (j-1) * deltay + (deltay / 2.0);
+               rz[n] = (k-1) * deltaz + (deltaz / 2.0);
             }
          }
       }
 
       // Centramos las posiciones simetricamente respecto al centro de la caja
       for(i=1; i<=(*nat) ; i++){
-         rx[i] = rx[i] - 0.5 * minibox_x;
+         rx[i] = rx[i] - 0.5 * longitud_minibox_x;
          ry[i] = ry[i] - 0.5 * boxy;
          rz[i] = rz[i] - 0.5 * boxz;
       }  
