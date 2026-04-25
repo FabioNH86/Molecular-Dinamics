@@ -84,7 +84,7 @@ def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
     print("--- Iniciando batería de simulaciones ---")
 
 
-def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=3000, num_bines=100):
+def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=5488, num_bines=100):
     with open(filename, 'r') as f:
         configuración_1 = f.readline() # Linea 1: CONFIGURACION X
         partes = configuración_1.split()
@@ -201,7 +201,7 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
 
         densidades_por_configuracion = pd.DataFrame(todas_las_densidades)
 
-        ultimas_densidades = densidades_por_configuracion.iloc[-100000:]
+        ultimas_densidades = densidades_por_configuracion.iloc[-500000:]
 
         #perfil_promedio = densidades_por_configuracion.mean(axis=0) 
         perfil_promedio = ultimas_densidades.mean()
