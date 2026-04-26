@@ -15,15 +15,15 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 Fabio Noriega Hernández
 """
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 2
+num_prueba = 3
 
 
-temperatura = 1.10
-densidades = [round(x, 3) for x in np.arange(0.01, 0.21, 0.02)]
+temperatura = 0.70
+densidades = [round(x, 3) for x in np.arange(0.001, 0.003, 0.0005)]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
 ruta_base = f"Resultados/Isortermas/Ronda_{num_prueba}"
-ejecutable = "./mie_exec"
+ejecutable = "./mie_isotermas"
 
 
 for rho in densidades:
@@ -36,7 +36,7 @@ for rho in densidades:
         print(f"\n📁 Creada carpeta: {ruta_destino}")
 
     # Se actulaiza el archivo in.dat
-    actualizar_entradas(densidad=rho, temp=temperatura, densidad_constante=False)
+    actualizar_entradas(temp=0.7, modo='isoterma', densidad_obj=rho)
     print(f"🌡️ Configurando T = {temperatura:.2f}...")
     print(f"> Configurando Rho = {rho:.2f} para caja centrada")
 

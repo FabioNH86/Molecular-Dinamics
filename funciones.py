@@ -4,68 +4,65 @@ from numpy.polynomial import polynomial as P
 import io
 import matplotlib.pyplot as plt
 import math
-import os
-import glob
 
 
 
-def generar_dimensiones_partículas(densidad, volumen=16000, tamaño_minibox='mitad', densidad_global=True):
-    # De esta manera se calcula la densidad pero respecto a la minibox donde se distribuirán las partículas
-    if tamaño_minibox.lower() == 'mitad': 
-        volumen_minibox = volumen / 2
-    elif tamaño_minibox.lower() == 'tercio':
-        volumen_minibox = volumen / 3
+def calcular_dimensiones_por_densidad(ndiv, densidad_objetivo):
+    """
+    Calcula el lado L necesario para que un sistema con 
+    N partículas (nx*ny*nz) tenga la densidad deseada.
+    """
+    n_particulas = ndiv[0] * ndiv[1] * ndiv[2]
     
-    elif tamaño_minibox.lower() == 'uniforme':
-        volumen_minibox = volumen
+    if n_particulas <= 0:
+        raise ValueError("El número de partículas (ndiv) debe ser mayor a 0.")
     
-    else: 
-        raise ValueError(f"Error: '{tamaño_minibox}' no es una opción válida. Usa 'mitad', 'tercio' o 'uniforme'.")
+    # rho = N / V  =>  V = N / rho
+    volumen_necesario = n_particulas / densidad_objetivo
+    
+    # Para una caja cúbica: L = V^(1/3)
+    # Para tu caja alargada (donde Ly=Lz y Lx = 2*Ly):
+    # V = Lx * Ly * Lz = (2L) * L * L = 2L^3  => L = (V/2)^(1/3)
+    
+    # Asumamos caja cúbica por defecto para cálculos de capacidad calorífica
+    l_lado = math.pow(volumen_necesario, 1/3)
+    
+    return l_lado, n_particulas
+
+
+def actualizar_entradas(temp, densidad_obj=0.5, modo='barrido'):
+    """
+    modo 'barrido': N y V constantes (Geometría fija de coexistencia).
+    modo 'isoterma': N constante, V variable (Ajusta L para la densidad).
+    """
+    
+    if modo == 'isoterma':
+        # Definimos un N estándar para capacidad calorífica (Caja Cúbica)
+        # 12x12x12 es un buen equilibrio entre estadística y velocidad
+        ndiv = [18, 17, 17] 
         
+        # Calculamos el lado L necesario para la densidad_obj
+        L, n_total = calcular_dimensiones_por_densidad(ndiv, densidad_obj)
+        lx = ly = lz = L
+        
+    else: # modo == 'barrido'
+        # Geometría fija para coexistencia (L y N constantes)
+        lx, ly, lz = 48.92, 24.46, 24.46
+        ndiv = [18, 18, 17]
+        n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
-    if densidad_global:
-        n_partículas = int(densidad * volumen)
-    
-    else:
-        # Se calcula el número de partículas necesario para satisfacer la densidad
-        # Se redonde a entero
-        n_partículas = int(densidad * volumen_minibox)
-
-    # Asumiendo que se usará una minibox de dimensiones iguales (Lx=Ly=Lz)
-        # Se calcula la raíz cuadrada de las partículas totales
-    lado_base = int(math.cbrt(n_partículas))
-
-    if lado_base == 0:
-        return [0, 0, 0]
-
-    else:
-        nz = lado_base
-        ny = lado_base
-        nx = n_partículas // (nz * ny)
-
-
-    return [nx, ny, nz]
-
-
-def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
-    if densidad_constante:
-        #"""Modifica el archivo in.dat con una temperatura seleccionada."""
-        ndiv = [28, 14, 14]
-
-    else: 
-        ndiv = generar_dimensiones_partículas(densidad=densidad)
-
-    
-    ndiv_str = f"{ndiv[0]:<3} {ndiv[1]:<3} {ndiv[2]:<3}"
+    # Formateo preciso para el in.dat
+    ndiv_str = f"{ndiv[0]:<4} {ndiv[1]:<4} {ndiv[2]:<4}"
+    l_str = f"{lx:<8.4f} {ly:<8.4f} {lz:<8.4f}"
     
     contenido = f"""2         ncolectivo_1_NVE_2_NVT_3_NPT
 1         nopcion_1_inicializacion_2_continuacion
 3         dofx_numero_de_dimensiones
-12.0      expn_exponente_para_la_parte_repulsiva_12_para_LJ
-6.0       expm_exponente_para_la_parte_atractiva_6_en_general
+12.0      expn_exponente_parte_repulsiva_12_para_LJ
+6.0       expm_exponente_parte_atractiva_6_en_general
 0.001     time_tiempo_de_integracion
-48.92 24.46 24.46  Lx_Ly_Lz_en_unidades_reducidas
-{ndiv_str:<10}  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
+{l_str}  Lx_Ly_Lz_unidades_reducidas
+{ndiv_str}  ndivx_ndivy_ndivz_numero_de_atomos_por_lado
 {temp:<10.2f}   temp_en_unidades_reducidas_para_asignar_velocidades
 0.01      taut_para_termostato_berendsen
 0.0       presion_en_unidades_reducidas_para_presostato
@@ -79,32 +76,21 @@ def actualizar_entradas(temp, densidad=0.1, densidad_constante=True):
 10000     nprint_frecuencia_para_imprimir_en_pantalla"""
 
     with open("in.dat", "w") as f:
-        f.write(contenido)
+        f.write(contenido.strip())
 
-    print("--- Iniciando batería de simulaciones ---")
+    print(f"--- Configuración {modo.upper()} lista ---")
+    print(f"T={temp} | Rho={densidad_obj:.4f} | L={lx:.4f} | N={n_total}")
 
 
-def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=5488, num_bines=100):
+def calcular_densidades(filename, start_conf=500000, end_conf=1500000, num_atom=5488, num_bines=100):
     with open(filename, 'r') as f:
-        configuración_1 = f.readline() # Linea 1: CONFIGURACION X
-        partes = configuración_1.split()
-        n_conf = int(partes[-1]) # Se extrae la primer configuración
+        # 1. Leer cabecera para obtener Lx y parámetros
+        linea1 = f.readline() 
+        num_atom_file = int(f.readline())
 
-        # DEBUG:
-        #print(configuración_1)
+        for _ in range(num_atom_file): f.readline() # Se saltan las líneas de esos átomos 
+        Lx, Ly, Lz = [float(v) / 0.3405 for v in f.readline().split()]
 
-        num_atom = int(f.readline())
-        #DEBUG: 
-        #print(num_atom)
-
-        lineas_atomos = [f.readline() for _ in range(num_atom)] # Se saltan todas las posiciones del primer frame
-        
-        dimensiondes_caja = f.readline()
-        #print(dimensiondes_caja)
-        Lx, Ly, Lz = map(float, dimensiondes_caja.split()) 
-        Lx /= 0.3405 # Se divide por un factor de conversión usado a la hora de escribir la movie.gro
-        Ly /= 0.3405
-        Lz /= 0.3405
         print("Las dimensiones de la caja son:")                    
         print(f'Lx: {Lx:.4f}\nLy: {Ly:.4f}\nLz: {Lz:.4f} \n')
 
@@ -113,9 +99,8 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
         print(f'El volumen total de la caja es: {volumen_total:.4f} y se dividirá en {num_bines} bines \n')
         print(f"La densidad global es: {densidad_global:.4f}")
 
-        dx = Lx / num_bines
-        volumen_bin = dx * Ly * Lz
-        print(f'El volumen de cada bin será: {volumen_bin:.4f} y su ancho será de: {dx:.4f} \n')
+        volumen_bin = (Lx / num_bines) * Ly * Lz
+        print(f'El volumen de cada bin será: {volumen_bin:.4f} y su ancho será de: {(Lx / num_bines):.4f} \n')
         
         # Cortes a lo largo de Lx
         cortes_x = np.linspace(0, Lx, num_bines + 1)
@@ -125,87 +110,65 @@ def calcular_densidades(filename, start_conf=500000, end_conf=1000000, num_atom=
         # -- HASTA AQUÍ SE ESTABLECEN LAS CONDICIONES DE INICIO --
         # (Cuando la caja de simulación está acomodadita)
 
+        # -- SALTO DE CONFIGURACIONES -- 
+        print(f"Saltando hasta la configuración {start_conf}...")
+        f.seek(0)
+        n_conf = 0
+        while n_conf < start_conf:
+            linea = f.readline()
+            if not linea: break # Fin si el archivo tiene un salto de línea inesperado
+            if "CONFIGURACION" in linea:
+                n_conf = int(linea.split()[-1])
+
+                if n_conf < start_conf:
+                    f.readline() # Saltamos num_atom
+                    for _ in range(num_atom): f.readline()
+                    f.readline() # Línea de posiciones
+
         # -- AQUI INICIA EL PROCESADO DE LAS DEMÁS POSICIONES --
-        n_conf = 1
-        contador_frames = 0
+        print(f"Iniciando procesado desde {n_conf} hasta {end_conf}...")
+        
         todas_las_densidades = []
-
         while n_conf < end_conf:
-            configuracion = f.readline()
-            partes = configuracion.split()
-            n_conf = int(partes[-1])
-            contador_frames += 1
+            linea_conf = f.readline()
+            if not linea_conf: break
+            n_conf = int(linea_conf.split()[-1])
 
-            # Imprimimos cada 100 mil configuraciones
-            if n_conf % 100000 == 0:
-                print(f"Procesando configuración: {n_conf}")
-
-            new_num_atom = int(f.readline())
-            #print(new_num_atom)
-
-            if new_num_atom != num_atom:
-                raise ValueError("Cambió el número de átomos")
-            
-            lineas_atomos = [f.readline() for _ in range(num_atom)]
-
-            atomos = pd.read_csv(
-                io.StringIO("".join(lineas_atomos)),
-                sep=r'\s+',
-                header=None
-            )
-            
-            # Seleccionar las últimas 4 columnas sin importar cuántas haya
-            atomos = atomos.iloc[:, -4:].copy()
-            atomos.columns = ['ID', 'X', 'Y', 'Z']
-            #print(atomos.tail())
-            f.readline() # Nos saltamos una línea
-            #print("")
-
-            # También se ajustan las coordenadas 
-            atomos['X'] /= 0.3405
-            atomos['Y'] /= 0.3405
-            atomos['Z'] /= 0.3405
-            #print(atomos.head())
-            
-            # -- NORMALIZAMOS LAS POSICIONES --
-            atomos['X'] -= atomos['X'].min()
-            atomos['Y'] -= atomos['Y'].min()
-            atomos['Z'] -= atomos['Z'].min()
+            f.readline()
 
 
-            # print(atomos.tail())
-            # print("")
+            posiciones_x = []
 
-        # -- Ahora sí, comenzamos con el cálculo de densidades en cada configuración
-            densidades_por_bin = []
-            bin = 0
-            for i in range(num_bines):
-                bin += 1
-                # Definimos los límites del bin 
-                x_inicial = cortes_x[i]
-                x_final = cortes_x[i+1]
+            for _ in range(num_atom_file):
+                linea_atomo = f.readline()
 
-                # Revisamos qué átomos tienen coordenadas que entran en el rango del bin actual
-                bin_actual = atomos[(atomos['X'] >= x_inicial) & (atomos['X'] < x_final)] 
-                # Contamos dichos átomos
-                num_atom_bin = len(bin_actual)
-                # Calculamos la densidad 
-                densidad_bin = num_atom_bin / volumen_bin
+                posiciones_x.append(float(linea_atomo.split()[-3]))
 
-                # Almacenamos cada densidad
-                densidades_por_bin.append(densidad_bin)
+            f.readline() # Saltamos las dimensiones de la caja 
 
-            # Guardamos las listas de densidades por bin en un dataframe como fila, cada fila debe ser una configuración
-            # Por lo tanto el dataframe debe ser (numero de bines x configuraciones)
+            # Convertimos a unidades reducidas
+            x_arr = np.array(posiciones_x) / 0.3405
+            centro_actual = x_arr.mean()
+            desplazamiento = (Lx / 2) - centro_actual
+            x_centrado = (x_arr + desplazamiento) % Lx
+
+
+            # CALCULAMOS LA DENSIDAD CON NUMPY 
+            counts, _ = np.histogram(x_centrado, bins=cortes_x)
+            densidades_por_bin = counts / volumen_bin
             todas_las_densidades.append(densidades_por_bin)
 
-        densidades_por_configuracion = pd.DataFrame(todas_las_densidades)
 
-        ultimas_densidades = densidades_por_configuracion.iloc[-500000:]
+            if n_conf % 100000 == 0:
+                print(f'Procesado: {n_conf}')
+
+            
+        # Conjunto de densidades
+        df_densidades = pd.DataFrame(todas_las_densidades)
 
         #perfil_promedio = densidades_por_configuracion.mean(axis=0) 
-        perfil_promedio = ultimas_densidades.mean()
-        desviacion_estandar = ultimas_densidades.std()
+        perfil_promedio = df_densidades.mean()
+        desviacion_estandar = df_densidades.std()
         
     return centros_x, perfil_promedio, desviacion_estandar
 

@@ -54,8 +54,11 @@ if not os.path.exists(ruta_graficos):
 # Lista de densidades de líquido y vapor
 densidades_liquido = []
 densidades_vapor = []
+std_liquido = []
+std_vapor = []
+
 centro = num_bines // 2
-margen = num_bines // 40
+margen = 5
 
 for T in temperaturas_originales:
 
@@ -74,23 +77,26 @@ for T in temperaturas_originales:
     archivo_encontrado = archivo_encontrado[0]
 
     # Llamamos la función
-    x, rho_prom, rho_std = calcular_densidades(filename=archivo_encontrado, start_conf=900000, num_bines=num_bines)
-
-
+    x, rho_prom, rho_std = calcular_densidades(filename=archivo_encontrado, start_conf=1000000, num_bines=num_bines)
 
     bines_liquido = rho_prom[centro - margen : centro + margen]
-    rho_liquido = np.mean(bines_liquido)
-    std_rho_liquido = np.std(bines_liquido)
+    rho_liquido = bines_liquido.mean()
+    std_rho_liquido = rho_std[centro - margen : centro + margen].mean()
 
-    bines_vapor = np.concatenate([rho_prom[:un_tercio], rho_prom[2 * un_tercio:]])
-    rho_vapor = np.mean(bines_vapor)
-    std_rho_vapor = np.std(bines_vapor)
+    bines_vapor = np.concatenate([rho_prom[:10], rho_prom[-10:]])
+    rho_vapor = bines_vapor.mean()
+    std_rho_vapor = rho_std[:10].mean()
 
-    # Almacenamos estos valores para el diagrama de coexistencia
+
+    # Almacenado de las densidades y sus desviacioes
     densidades_liquido.append(rho_liquido)
-    densidades_vapor.append(rho_vapor)
+    std_liquido.append(std_rho_liquido)
 
-    print(f"T={T:.2f} | rho_L: {rho_liquido:.4f} (std: {std_rho_liquido:.4e}) | rho_V: {rho_vapor:.4f} (std: {std_rho_vapor:.4e})")
+    densidades_vapor.append(rho_vapor)
+    std_vapor.append(std_rho_vapor)
+
+    # Cambia tu print por este (usando el índice -1 para el último elemento):
+    print(f"T={T:.2f} | rho_L: {rho_liquido:.4f} (std: {std_liquido[-1]:.4e}) | rho_V: {rho_vapor:.4f} (std: {std_vapor[-1]:.4e})")
 
     print("="*100)
     print('\n')
@@ -102,12 +108,12 @@ plt.figure(figsize=(9, 7))
 # Graficamos las ramas unidas por una línea para formar la "campana"
 # Graficamos la rama del líquido con barras de error
 plt.errorbar(densidades_liquido, temperaturas, 
-             xerr=std_rho_liquido, # <--- Aquí van tus desviaciones de la fase líquida
+             xerr=std_liquido, # <--- Aquí van tus desviaciones de la fase líquida
              fmt='o', color='blue', ecolor='lightblue', elinewidth=1.5, capsize=3,
              label='Simulación: Líquido', markersize=5)
 
 plt.errorbar(densidades_vapor, temperaturas, 
-             xerr=std_rho_vapor,
+             xerr=std_vapor,
              fmt='o', color='red', ecolor='lightsalmon', elinewidth=1.5, capsize=3,
              label='Simulación: Vapor', markersize=5)
 

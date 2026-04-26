@@ -17,13 +17,13 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 9
+entrada = 11
 num_prueba = int(entrada)
 num_bines = 50 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
 
 # Lista de Temperaturas
 # temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas_originales = [0.60]
+temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10]
 
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
@@ -73,6 +73,8 @@ for T in temperaturas_originales:
     # --- FIGURA 1: ANÁLISIS DE ENERGÍAS Y DENSIDAD (SUBPLOTS) ---
     fig, axs = plt.subplots(2, 2, figsize=(12, 8), layout='constrained')
 
+    fig.suptitle(f'Análisis de Simulación (Temperatura T = {T})', fontsize=16)
+
     # Panel 1: Energía Cinética (Fase inicial)
     axs[0, 0].plot(config[ventana:], kinetic_e[ventana:], color='tab:blue')
     axs[0, 0].set_title('Energía Cinética (Equilibración)')
@@ -84,7 +86,7 @@ for T in temperaturas_originales:
     #axs[0, 1].axhline(y=mean_potential_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
     axs[0, 1].set_title('Energía Potencial (Equilibración)')
     axs[0, 1].set_xlabel('Configuración')
-    axs[0, 1].set_ylabel('U / ε')
+    #axs[0, 1].set_ylabel('U / ε')
     #axs[0, 1].legend()
 
     # Panel 3: Energía Total (Fase inicial)
@@ -95,7 +97,7 @@ for T in temperaturas_originales:
 
     # Panel 4: Variación de la Presión (Toda la simulación)
     axs[1, 1].plot(config[ventana:], pressure[ventana:], color='tab:green')
-    axs[1, 1].set_title('Evolución de la Densidad')
+    axs[1, 1].set_title('Evolución de la Presión')
     #axs[1, 1].axhline(y=mean_pressure_reported, color='black', linestyle='--', linewidth=1.5, label='Referencia Tabla')
     axs[1, 1].set_xlabel('Configuración')
     plt.show()

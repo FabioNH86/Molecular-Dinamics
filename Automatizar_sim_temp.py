@@ -31,7 +31,7 @@ for T in temperaturas:
         print(f"\n📁 Creada carpeta: {ruta_destino}")
 
     # Se actulaiza el archivo in.dat
-    actualizar_entradas(T, densidad_constante=True)
+    actualizar_entradas(temp=T, densidad_fija=0.1875, modo='barrido')
     print(f"🌡️ Configurando T = {T:.2f}...")
 
 

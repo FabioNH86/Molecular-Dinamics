@@ -15,7 +15,7 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 9
+entrada = 11
 num_prueba = int(entrada)
 
 temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
@@ -40,7 +40,7 @@ for T in temperaturas:
     archivo_actual_presiones = archivos_presiones[0]
 
     print(f'Procesando T={T}')
-    primer_bloque_estable = calcular_promedios_energía_claude_2(archivo=archivo_actual_todo, ancho_bloques=100000, mostrar_progreso=False)
+    primer_bloque_estable = calcular_promedios_energía_claude_2(archivo=archivo_actual_todo, ancho_bloques=100000, mostrar_progreso=True)
 
     if primer_bloque_estable is not None:
         presiones, presion_vapor = calcular_presiones_vapor(archivo=archivo_actual_presiones, configuraciones_consideradas=(primer_bloque_estable))

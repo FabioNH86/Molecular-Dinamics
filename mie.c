@@ -202,7 +202,7 @@ if (rcut >= (0.5*ladomenor)){
 
 /* Creamos las posiciones y velocidades iniciales si es primer corrida */   
 if (nopcion == 1){
-   crear_posiciones_mas_espacio_líquido(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
+   crear_posiciones_uniformemente(&nat, &rho, dofx, rx, ry, rz, boxx, boxy, boxz, ndivx, 
    ndivy, ndivz);
    crear_velocidades(nat, dofx, amasa, temp, vx, vy, vz);
 }
