@@ -23,7 +23,7 @@ num_bines = 50 # Establece el número de fracciones en que se dividirá la caja 
 
 # Lista de Temperaturas
 # temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10]
+temperaturas_originales = [1.20]
 
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
@@ -68,7 +68,7 @@ for T in temperaturas_originales:
         
     # Parámetro de corte para la fase de equilibración
     salto: int = 500000
-    ventana = -500000
+    ventana = -200000
 
     # --- FIGURA 1: ANÁLISIS DE ENERGÍAS Y DENSIDAD (SUBPLOTS) ---
     fig, axs = plt.subplots(2, 2, figsize=(12, 8), layout='constrained')

@@ -6,7 +6,7 @@ Para Intel: `gcc -O3 -fopenmp -march=native -mtune=native -flto mie.c -o mie_exe
 
 Para caja de simulación: `vmd > pbc box -center origin`
 
-Lanzar simulaciones en tmux: `tmux send-keys -t simulación "python3 mi_script.py" C-m`
+Lanzar simulaciones en tmux: `tmux send-keys -t simulacion "python3 mi_script.py" C-m`
 
 Ver sesión de tmux: `tmux attach -t simulacion`
 Lista tmux: `tmux ls`

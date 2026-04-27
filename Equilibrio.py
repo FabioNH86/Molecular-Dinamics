@@ -18,7 +18,7 @@ Asesor: Dr. Luis Padilla
 entrada = 11
 num_prueba = int(entrada)
 
-temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
+temperaturas_originales = [1.20]
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
 

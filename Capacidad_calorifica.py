@@ -18,13 +18,13 @@ Asesor: Dr. Luis Padilla
 """
 
 # -- SEÑALA EN NÚMERO DE RONDA QUE DESEAS VISUALIZAR --
-ronda = 1
+ronda = 4
 ronda = int(ronda)
 
-temperatura = 0.7
-densidades = [round(x, 3) for x in np.arange(0.001, 0.1, 0.01)]
+temperatura = 0.70
+densidades = [0.001, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
 
-ruta_comun = f"Resultados/Isortermas/Ronda_{ronda}"
+ruta_comun = f"Resultados/Isortermas/Ronda_{ronda}/Temp={temperatura:.2f}"
 
 # Definimos la ruta de guardado
 ruta_graficos = os.path.join(ruta_comun, 'Capacidad Calorífica')
@@ -34,60 +34,54 @@ if not os.path.exists(ruta_graficos):
     os.makedirs(ruta_graficos)
     print(f"Carpeta creada: {ruta_graficos}")
 
-print(f"Analizando datos para T* = {temperatura}...")
+print(f"Analizando datos para T* = {temperatura} (HOOMD-blue v6.1.1)")
 
 cv_calculados = []
 rhos_encontradas = []
 
 for rho in densidades:
 
-    nombre_carpeta = f"Rho={rho:.2f}"
-    ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, "todo_T*.dat")
-    archivo_encontrado = glob.glob(ruta_busqueda)
-    print(f'Archivo actual: {archivo_encontrado}')
-    archivo_encontrado = archivo_encontrado[0]
+    nombre_carpeta = f"Rho={rho:.4f}"
+    patron = os.path.join(ruta_comun, nombre_carpeta, "*.csv")
+    archivos = glob.glob(patron)
 
-    estabilidad = calcular_promedios_energía_claude_2(archivo=archivo_encontrado, mostrar_progreso=False)
-    todo = generar_dataframes_todo(archivo=archivo_encontrado)
+    if not archivos:
+        print(f"⚠️ No se encontró archivo para Rho={rho:.4f}")
+        continue
 
-    cv = calcular_capacidad_calorífica(dataframe=todo, T=temperatura)
+    archivo_actual = archivos[0]
+    print(f"📄 Procesando: {os.path.basename(archivo_actual)}")
+
+    df = pd.read_csv(archivo_actual, sep=r'\s+')
+    df.columns = [c.split('.')[-1] for c in df.columns]
+    print(f"Columnas detectadas: {df.columns.tolist()}")
+
+    df_produccion = df.iloc[50:].copy()
+
+    print(df_produccion.head())
+
+    N = 5508  # Tu número de partículas
+    var_u = df_produccion['potential_energy'].var()
+    
+    # Térmico (gas ideal) + Fluctuación (configuracional)
+    cv = 1.5 + (var_u / (N * (temperatura**2)))
 
     cv_calculados.append(cv)
     rhos_encontradas.append(rho)
-    print('\n')
-    print('='*100)
-    
+    print(f"   -> Cv calculado: {cv:.4f}")
 
 # --- GENERACIÓN DEL GRÁFICO ---
 if cv_calculados:
-    plt.figure(figsize=(7, 6))
+    plt.figure(figsize=(8, 6))
+    plt.plot(rhos_encontradas, cv_calculados, 'o-', color='#2c3e50', label=f'HOOMD (T*={temperatura})')
     
-    # Graficamos usando las listas de datos encontrados
-    plt.plot(rhos_encontradas, cv_calculados, 
-         marker='o',           # Forma del punto
-         linestyle='-',        # Estilo de línea
-         color='blue',         # Color
-         markersize=6,         # Tamaño del punto
-         linewidth=1.5,        # Grosor de línea
-         label=f'T* = {temperatura}')
-    
-    plt.autoscale(enable=True, axis='x', tight=True)
-
-    # Estética estilo NIST
-    plt.xlabel(r'$\rho^*$ (Densidad reducida)', fontsize=12)
-    plt.ylabel(r'$c_v^*$ (Capacidad calorífica)', fontsize=12)
-    plt.title(f'Isoterma de Capacidad Calorífica (Ronda {ronda})', fontsize=13)
-    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.xlabel(r'Densidad $\rho^*$', fontsize=12)
+    plt.ylabel(r'Capacidad Calorífica $c_v^*$', fontsize=12)
+    plt.title(f'Capacidad Calorífica vs Densidad - Ronda {ronda}', fontsize=13)
+    plt.grid(True, linestyle=':', alpha=0.6)
     plt.legend()
     
-    # Ajuste de límites según tu imagen de referencia
-    # plt.xlim(0, 1.0)
-    plt.ylim(0, max(cv_calculados) * 1.2 if cv_calculados else 3.5)
-
-    # Guardado y visualización
-    nombre_img = f'Isoterma_T{temperatura}_Ronda{ronda}.png'
-    plt.savefig(os.path.join(ruta_graficos, nombre_img), dpi=300, bbox_inches='tight')
-    print(f"\nÉxito: Gráfico guardado como {nombre_img}")
+    nombre_img = f'Cv_Isoterma_T{temperatura}.png'
+    plt.savefig(os.path.join(ruta_graficos, nombre_img), dpi=300)
+    print(f"\n✅ Gráfico guardado en: {ruta_graficos}")
     plt.show()
-else:
-    print("\nError: No se encontraron datos para graficar.")

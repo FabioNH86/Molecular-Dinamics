@@ -64,7 +64,7 @@ for T in temperaturas:
     print(f'Procesando T={T}')
 
     # Llamada a tu función
-    x, rho_prom, rho_std = calcular_densidades(filename=archivo_actual, start_conf=900000)
+    x, rho_prom, rho_std = calcular_densidades(filename=archivo_actual, start_conf=1200000)
 
     print("="*100)
 

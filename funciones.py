@@ -4,6 +4,7 @@ from numpy.polynomial import polynomial as P
 import io
 import matplotlib.pyplot as plt
 import math
+import hoomd
 
 
 
@@ -48,7 +49,7 @@ def actualizar_entradas(temp, densidad_obj=0.5, modo='barrido'):
     else: # modo == 'barrido'
         # Geometría fija para coexistencia (L y N constantes)
         lx, ly, lz = 48.92, 24.46, 24.46
-        ndiv = [18, 18, 17]
+        ndiv = [28, 14, 14]
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
     # Formateo preciso para el in.dat
@@ -68,7 +69,7 @@ def actualizar_entradas(temp, densidad_obj=0.5, modo='barrido'):
 0.0       presion_en_unidades_reducidas_para_presostato
 0.0       taup_para_presostato_berendsen
 4.0       rcut_r_de_corte_del_potencial_menor_a_la_mitad_de_la_caja
-500000    nconfequi_numero_de_configuraciones_para_equilibrar
+1000000    nconfequi_numero_de_configuraciones_para_equilibrar
 1500000   nconf_numero_de_configuraciones
 50000     nperfil_frecuencia_para_calcular_distribuciones
 0.1       deltar_ancho_del_intervalo_para_perfil_de_densidad
@@ -483,3 +484,82 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
 
     print(f'La capacidad calorifica es: {Cv_total}')
     return Cv_total
+
+
+def run_hoomd_simulation(temp, rho, modo='isoterma'):
+    # -- Uso de GPU -- 
+    device = hoomd.device.GPU()
+    sim = hoomd.Simulation(device=device, seed=42)
+
+    # -- Definición de la geometría del sistema -- 
+    if modo == 'isoterma':
+        ndiv = [18, 18, 17] 
+        n_total = ndiv[0] * ndiv[1] * ndiv[2]
+
+        # L = (N / rho)^(1/3)
+        L = (n_total / rho)**(1/3)
+        lx = ly = lz = L
+
+    else:
+        lx, ly, lz = 48.92, 24.46, 24.46
+        ndiv = [18, 18, 17]
+        n_total = ndiv[0] * ndiv[1] * ndiv[2]
+
+    # Se crea un estado incial
+    snap = hoomd.Snapshot()
+    if snap.communicator.rank == 0: # Verifica que se esté en el primer proceso
+        snap.configuration.box = [lx, ly, lz, 0, 0, 0] # Se asignan las dimensiones e inclinación a los lados de la caja de simulación
+        snap.particles.N = n_total # Se asigna un número de partículas
+        snap.particles.types = ['A']
+
+        # Acomodo de las partículas
+        x = np.linspace(-lx/2, lx/2, ndiv[0], endpoint=False)
+        y = np.linspace(-ly/2, ly/2, ndiv[1], endpoint=False)
+        z = np.linspace(-lz/2, lz/2, ndiv[2], endpoint=False)
+        pos = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3) # Se unen las 3 coordenadas en una cuadrícula 3D
+        snap.particles.position[:] = pos # Se copian las coordenadas generadas en un snap de hoomd
+
+    sim.create_state_from_snapshot(snap) # Se crea la simulación a partir de las posiciones del snap generado
+    sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp) # Se asignan velocidades iniciales
+
+    # Configuración del potencial
+    n_exp, m_exp = 12.0, 6.0
+    epsilon, sigma = 1.0, 1.0
+
+    # Factor de corrección de largo alcance para Mie
+    coef = (n_exp / (n_exp - m_exp)) * (n_exp / m_exp) ** (m_exp / (n_exp - m_exp))
+
+    cell = hoomd.md.nlist.Cell(buffer=0.4) # Se espera que la partícula se mueva 0.4 unidades 
+    # cell: Divide la caja en rejillas de interacción 
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=coef) # Se define el potecial mie como en el código en C con r_cut = 4.0
+    mie.params[('A', 'A')] = dict(epsilon=epsilon, sigma=sigma, n=n_exp, m=m_exp) # Se define la manera de interacción entre las partículas 
+
+    # -- Integrador y termostato del ensamble NVT --
+    # dt=0.001 y taut=0.01
+    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie])
+    sim.operations.integrator = integrator
+
+    # -- Loggers (Muestra de la información) --
+    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
+    sim.operations.computes.append(thermo)
+
+    # Logger de datos termodinámicos (parecido a todo.dat)
+    logger = hoomd.logging.Logger(categories=['scalar'])
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])
+
+    # El archivo de salida es una tabla
+    log_filename = f"todo_T{temp}_rho{rho:.4f}.csv"
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
+                              logger=logger,
+                              output=open(log_filename, 'w'))
+
+    sim.operations.writers.append(table)
+
+    sim.run(500000)
+    sim.run(1000000)
+
+    print(f'Simulación finalizada: Rho = {rho}')
+
+

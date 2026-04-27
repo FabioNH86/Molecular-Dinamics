@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 import numpy as np
-from funciones import actualizar_entradas
+from funciones import run_hoomd_simulation
 
 
 """
@@ -14,20 +14,20 @@ en una carpeta que señala la temperatura usada (Resultados/P{num_prueba}_LV_Mie
 
 Fabio Noriega Hernández
 """
-# -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 3
 
+# -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
+num_prueba = 4
 
 temperatura = 0.70
-densidades = [round(x, 3) for x in np.arange(0.001, 0.003, 0.0005)]
+densidades = [0.026, 0.035] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
-ruta_base = f"Resultados/Isortermas/Ronda_{num_prueba}"
-ejecutable = "./mie_isotermas"
+ruta_base = f"Resultados/Isortermas/Ronda_{num_prueba}/Temp={temperatura:.2f}"
+#ejecutable = "./mie_isotermas"
 
 
 for rho in densidades:
-    nombre_carpeta = f"Rho={rho:.2f}"
+    nombre_carpeta = f"Rho={rho:.4f}"
     ruta_destino = os.path.join(ruta_base, nombre_carpeta)
 
     # Si la carpeta no existe aún:
@@ -36,31 +36,26 @@ for rho in densidades:
         print(f"\n📁 Creada carpeta: {ruta_destino}")
 
     # Se actulaiza el archivo in.dat
-    actualizar_entradas(temp=0.7, modo='isoterma', densidad_obj=rho)
-    print(f"🌡️ Configurando T = {temperatura:.2f}...")
-    print(f"> Configurando Rho = {rho:.2f} para caja centrada")
+    #actualizar_entradas(temp=0.7, modo='isoterma', densidad_obj=rho)
+    print(f"🌡️ Iniciando T = {temperatura:.2f} | Rho = {rho:.4f}...")
 
+    original_path = os.getcwd()
 
-    # Se ejecuta la simulación
-    try:
-        print(f"🚀 Ejecutando simulación para {nombre_carpeta}...")
-        subprocess.run(ejecutable, check=True)
+    try: 
+        os.chdir(ruta_destino)
 
-        # Se mueven los archivos generados
-        archivos_a_mover = ["movie.gro", "presiones.dat", "resumen.dat", "todo.dat", "xyz.dat", "gr_dm.dat", "perfil_dm.dat"]
+        run_hoomd_simulation(temp=0.7, rho=rho, modo='isoterma')
 
-        for archivo in archivos_a_mover:
-            if os.path.exists(archivo):
-                # Se actuliza el nombre del archivo para evitar confusiones
-                nombre_nuevo = archivo.replace(".dat", f"_T{str(temperatura).replace('.', '-')}.dat")
-                shutil.move(archivo, os.path.join(ruta_destino, nombre_nuevo))
-            else:
-                print(f"⚠️ Advertencia: No se encontró {archivo}")
+        print(f"✅ Finalizada Rho={rho:.4f}. Datos guardados en {nombre_carpeta}/")
 
-        print(f"✅ Finalizada T={temperatura:.2f}. Archivos guardados. \n")
-
-    except subprocess.CalledProcessError:
-        print(f"❌ Error crítico en la ejecución de 'new_mie' para T={temperatura:.2f}")
+    except Exception as e:
+        print(f"❌ Error crítico en la simulación para Rho={rho:.4f}: {e}")
+        os.chdir(original_path)
         break
+
+    finally:
+        os.chdir(original_path)
+
+    
 
 print("\n--- Todas las simulaciones han terminado ---")

@@ -16,7 +16,7 @@ Fabio Noriega Hernández
 num_prueba = 11
 
 #temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas = [0.60, 0.70] # Dividir cada 2 simulaciones en cada compu
+temperaturas = [1.20] # Dividir cada 2 simulaciones en cada compu
 ruta_base = f"Resultados/P{num_prueba}_LV_Mie"
 ejecutable = "./mie_exec"
 
@@ -31,7 +31,7 @@ for T in temperaturas:
         print(f"\n📁 Creada carpeta: {ruta_destino}")
 
     # Se actulaiza el archivo in.dat
-    actualizar_entradas(temp=T, densidad_fija=0.1875, modo='barrido')
+    actualizar_entradas(temp=T, densidad_obj=0.1875, modo='barrido')
     print(f"🌡️ Configurando T = {T:.2f}...")
 
 
