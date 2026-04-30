@@ -18,11 +18,11 @@ Fabio Noriega Hernández
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
 num_prueba = 4
 
-temperatura = 0.70
-densidades = [0.026, 0.035] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
+temperatura = 0.80
+densidades = [0.046, 0.047, 0.048, 0.049] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
-ruta_base = f"Resultados/Isortermas/Ronda_{num_prueba}/Temp={temperatura:.2f}"
+ruta_base = f"Resultados/Isotermas/Ronda_{num_prueba}/Temp={temperatura:.2f}"
 #ejecutable = "./mie_isotermas"
 
 
@@ -44,7 +44,7 @@ for rho in densidades:
     try: 
         os.chdir(ruta_destino)
 
-        run_hoomd_simulation(temp=0.7, rho=rho, modo='isoterma')
+        run_hoomd_simulation(temp=temperatura, rho=rho, modo='isoterma')
 
         print(f"✅ Finalizada Rho={rho:.4f}. Datos guardados en {nombre_carpeta}/")
 

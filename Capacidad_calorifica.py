@@ -21,10 +21,10 @@ Asesor: Dr. Luis Padilla
 ronda = 4
 ronda = int(ronda)
 
-temperatura = 0.70
-densidades = [0.001, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+temperatura = 0.80
+densidades = [0.002,  0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.012, 0.017, 0.02, 0.03, 0.035, 0.04, 0.045, 0.046, 0.047, 0.048, 0.049, 0.05, 0.055, 0.06, 0.07, 0.08, 0.09, 0.1]
 
-ruta_comun = f"Resultados/Isortermas/Ronda_{ronda}/Temp={temperatura:.2f}"
+ruta_comun = f"Resultados/Isotermas/Ronda_{ronda}/Temp={temperatura:.2f}"
 
 # Definimos la ruta de guardado
 ruta_graficos = os.path.join(ruta_comun, 'Capacidad Calorífica')
@@ -72,13 +72,28 @@ for rho in densidades:
 
 # --- GENERACIÓN DEL GRÁFICO ---
 if cv_calculados:
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 7))
     plt.plot(rhos_encontradas, cv_calculados, 'o-', color='#2c3e50', label=f'HOOMD (T*={temperatura})')
     
+    for x, y in zip(rhos_encontradas, cv_calculados):
+        label = f"{x:.3f}"
+        plt.annotate(label,
+                     (x, y),
+                     textcoords="offset points",
+                     xytext=(0, 10),
+                     ha='center',
+                     va='bottom',
+                     rotation=90,
+                     fontsize=9,
+                     color='#34495e')
+
     plt.xlabel(r'Densidad $\rho^*$', fontsize=12)
     plt.ylabel(r'Capacidad Calorífica $c_v^*$', fontsize=12)
     plt.title(f'Capacidad Calorífica vs Densidad - Ronda {ronda}', fontsize=13)
-    plt.grid(True, linestyle=':', alpha=0.6)
+
+    plt.ylim(min(cv_calculados)*0.9, max(cv_calculados)*1.1)
+    plt.grid(True, linestyle=':', alpha=0.2)
+    plt.margins(y=2.0)
     plt.legend()
     
     nombre_img = f'Cv_Isoterma_T{temperatura}.png'

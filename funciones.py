@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
 from numpy.polynomial import polynomial as P
-import io
+import os
 import matplotlib.pyplot as plt
 import math
 import hoomd
+import gsd.hoomd
 
 
 
@@ -486,7 +487,7 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
     return Cv_total
 
 
-def run_hoomd_simulation(temp, rho, modo='isoterma'):
+def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
     # -- Uso de GPU -- 
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
@@ -502,8 +503,10 @@ def run_hoomd_simulation(temp, rho, modo='isoterma'):
 
     else:
         lx, ly, lz = 48.92, 24.46, 24.46
-        ndiv = [18, 18, 17]
+        ndiv = [28, 14, 14]
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
+
+        
 
     # Se crea un estado incial
     snap = hoomd.Snapshot()
@@ -550,12 +553,26 @@ def run_hoomd_simulation(temp, rho, modo='isoterma'):
     logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])
 
     # El archivo de salida es una tabla
-    log_filename = f"todo_T{temp}_rho{rho:.4f}.csv"
+    if modo == 'isoterma':
+        log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}_rho{rho:.4f}.csv")
+        gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}_rho{rho:.4f}.gsd")
+    else: 
+        log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}.csv")
+        gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}.gsd")
+
+
     table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
                               logger=logger,
                               output=open(log_filename, 'w'))
 
     sim.operations.writers.append(table)
+
+    
+    gsd_writer = hoomd.write.GSD(trigger=hoomd.trigger.Periodic(50000),
+                                 filename=gsd_filename,
+                                 mode='wb')
+    
+    sim.operations.writers.append(gsd_writer)
 
     sim.run(500000)
     sim.run(1000000)
@@ -563,3 +580,143 @@ def run_hoomd_simulation(temp, rho, modo='isoterma'):
     print(f'Simulación finalizada: Rho = {rho}')
 
 
+def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):
+    """
+    Calcula el perfil de densidad a lo largo del eje X usando el archivo GSD de HOOMD.
+    
+    Parameters:
+    -----------
+    gsd_file : str
+        Ruta al archivo .gsd
+    start_frame : int
+        Índice del frame inicial (0 es el primero grabado, no el paso de simulación).
+    num_bines : int
+        Número de divisiones en el eje X.
+    """
+    with gsd.hoomd.open(name=gsd_file, mode='r') as trayecto:
+        # 1. Obtener datos del primer frame para inicializar
+        snap_ref = trayecto[0]
+        lx = snap_ref.configuration.box[0]
+        ly = snap_ref.configuration.box[1]
+        lz = snap_ref.configuration.box[2]
+        num_atom = snap_ref.particles.N
+        
+        print(f"Dimensiones de la caja: Lx={lx:.4f}, Ly={ly:.4f}, Lz={lz:.4f}")
+        
+        volumen_bin = (lx / num_bines) * ly * lz
+        cortes_x = np.linspace(-lx/2, lx/2, num_bines + 1)
+        centros_x = (cortes_x[:-1] + cortes_x[1:]) / 2
+        
+        todas_las_densidades = []
+        
+        # 2. Iterar sobre los frames (HOOMD usa índices de 0 a N_frames)
+        total_frames = len(trayecto)
+        print(f"Procesando {total_frames - start_frame} frames de {total_frames} totales...")
+
+        for i in range(start_frame, total_frames):
+            snap = trayecto[i]
+            
+            # HOOMD centra la caja en (0,0,0), las posiciones van de -L/2 a L/2
+            posiciones_x = snap.particles.position[:, 0]
+            
+            # Centrado opcional: En simulaciones LV, la interfase puede moverse.
+            # Este paso centra la masa en el origen de la caja.
+            centro_masa = np.mean(posiciones_x)
+            x_centrado = ((posiciones_x - centro_masa + lx/2) % lx) - lx/2
+
+            # Histograma para obtener densidades
+            counts, _ = np.histogram(x_centrado, bins=cortes_x)
+            densidades_por_bin = counts / volumen_bin
+            todas_las_densidades.append(densidades_por_bin)
+
+            if i % 10 == 0:
+                print(f"Frame procesado: {i}/{total_frames}", end="\r")
+
+        # 3. Procesamiento estadístico
+        df_densidades = pd.DataFrame(todas_las_densidades)
+        perfil_promedio = df_densidades.mean()
+        desviacion_estandar = df_densidades.std()
+        
+        print("\n✅ Cálculo de perfil completado.")
+        
+    return centros_x, perfil_promedio, desviacion_estandar
+
+
+def encontrar_equilibrio_hoomd(archivo_csv, ancho_bloques=10, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
+    """
+    Analiza el archivo CSV de HOOMD para encontrar el paso donde las energías se estabilizan.
+    """
+    try:
+        # HOOMD genera CSV con encabezados, así que es más fácil de leer
+        df = pd.read_csv(archivo_csv)
+    except Exception as e:
+        print(f"❌ Error al leer {archivo_csv}: {e}")
+        return None
+
+    # Mapeo de columnas de HOOMD a nombres amigables
+    # HOOMD usa nombres como 'md.compute.ThermodynamicQuantities.potential_energy'
+    # Buscamos columnas que contengan las palabras clave
+    col_step = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()][0]
+    col_pot = [c for c in df.columns if 'potential_energy' in c.lower()][0]
+    col_kin = [c for c in df.columns if 'kinetic_energy' in c.lower()][0]
+    
+    # Creamos la columna de Energía Total si no existe
+    df['etot'] = df[col_pot] + df[col_kin]
+    
+    # Renombramos para compatibilidad con tu lógica
+    energias = df[[col_step, col_kin, col_pot, 'etot']].copy()
+    energias.columns = ['step', 'eki', 'epi', 'etot']
+
+    # Calcular promedios por bloque
+    bloques = []
+    for i in range(0, len(energias), ancho_bloques):
+        bloque = energias.iloc[i : i + ancho_bloques]
+        if len(bloque) < ancho_bloques:
+            break
+        resumen = bloque.mean()
+        bloques.append(resumen)
+
+    bloques_df = pd.DataFrame(bloques)
+
+    # ✅ Referencia: promedio del último % de los datos
+    n_cola = max(1, int(len(bloques_df) * fraccion_cola))
+    referencia = bloques_df.tail(n_cola)[['etot', 'eki', 'epi']].mean()
+
+    print(f"\n--- Análisis de Equilibrio: {os.path.basename(archivo_csv)} ---")
+    print(f"Referencia final: Etot={referencia['etot']:.4f} | Ekin={referencia['eki']:.4f}")
+
+    if mostrar_progreso:
+        print(f"{'Paso':<12} | {'E_total':<12} | {'E_Pot':<12} | Estabilidad")
+        print("-" * 55)
+
+    primer_paso_estable = None
+
+    for i, row in bloques_df.iterrows():
+        # Cálculo de variaciones
+        var_etot = abs((row['etot'] - referencia['etot']) / referencia['etot'])
+        var_eki  = abs((row['eki']  - referencia['eki'])  / referencia['eki'])
+        
+        # Criterio de estabilidad
+        estable = var_etot <= variacion_permitida and var_eki <= variacion_permitida
+        
+        if mostrar_progreso and i % 5 == 0: # Mostrar cada 5 bloques para no saturar
+            marca = "✅" if estable else "❌"
+            print(f"{row['step']:<12.0f} | {row['etot']:<12.4f} | {row['epi']:<12.4f} | {marca}")
+
+        # Verificación de estabilidad sostenida
+        if estable and primer_paso_estable is None:
+            resto = bloques_df.iloc[i:]
+            # Todos los bloques siguientes deben cumplir el criterio
+            todos_estables = all(
+                abs((r['etot'] - referencia['etot']) / referencia['etot']) <= variacion_permitida 
+                for _, r in resto.iterrows()
+            )
+            if todos_estables:
+                primer_paso_estable = row['step']
+
+    if primer_paso_estable:
+        print(f"✅ Sistema estabilizado en el paso: {primer_paso_estable:.0f}")
+        return int(primer_paso_estable)
+    else:
+        print("❌ No se detectó estabilidad sostenida.")
+        return None

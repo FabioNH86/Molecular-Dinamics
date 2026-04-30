@@ -2,8 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import pandas as pd 
 import os
-from funciones import calcular_perfil_densidad_gsd
 import glob
+# Asegúrate de que la función esté en tu archivo funciones.py o definida arriba
+from funciones import calcular_perfil_densidad_gsd 
 
 os.system('clear')
 
@@ -15,66 +16,44 @@ Fabio Noriega Hernández
 Abril 2026
 """
 
-# -- SEÑALA EN NÚMERO DE PRUEBA/ENSAYO QUE DESEAS VISUALIZAR --
-entrada = 1
-num_prueba = int(entrada)
-num_bines = 100 # Establece el número de fracciones en que se dividirá la caja de simulación (siempre en el eje x)
+# -- CONFIGURACIÓN --
+num_prueba = 1
+num_bines = 100
 start_frame = 10  # Ajustar según cuándo empiece el equilibrio en tus GSD
 
-# -- VALORES REPORTADOS POR LA NIST
-# nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, *, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
-# nist_rho_l = [8.643e-01, 8.426e-01, 8.203e-01, 7.970e-01, 7.728e-01, 7.474e-01, 7.203e-01, *, 6.592e-01, 6.233e-01, 5.807e-01, 5.238e-01, 4.367e-01]
-
+# -- DATOS NIST --
 nist_rho_v = [8.450e-04, 3.508e-03, 1.004e-02, 2.304e-02, 4.664e-02, 9.047e-02, 2.047e-01]
 nist_rho_l = [8.643e-01, 8.203e-01, 7.728e-01, 7.203e-01, 6.592e-01, 5.807e-01, 4.367e-01]
 
-
-    # Valores de error de la NIST
-errores_nist_v = []
-errores_nist_l = []
-
-
-# Lista de Temperaturas
-#temperaturas_originales = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
+# Temperaturas (asegúrate de que coincidan con las carpetas generadas)
 temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
-temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
-
 ruta_comun = f'Resultados/P{num_prueba}_HOOMD_Mie'
+ruta_graficos = os.path.join(ruta_comun, 'Graficos_Analisis')
 
-# Definimos la ruta de guardado
-ruta_graficos = os.path.join(ruta_comun, 'Graficos_Análisis')
-
-# Si la carpeta no existe, la creamos automáticamente
 if not os.path.exists(ruta_graficos):
-    os.makedirs(ruta_graficos)
-    print(f"Carpeta creada: {ruta_graficos}")
+    os.makedirs(ruta_graficos, exist_ok=True)
 
-# Lista de densidades de líquido y vapor
 densidades_liquido = []
 densidades_vapor = []
 std_liquido = []
 std_vapor = []
 temps_ejecutadas = []
 
+# Parámetros para promediar las fases en el perfil
 centro = num_bines // 2
 margen = 5
 
 for T in temperaturas_originales:
-
-    if T == 0.95: # Se omite el procesado de datos a esa temperatura
-        continue
-
-
     nombre_carpeta = f"T={T:.2f}"
-    ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, "movie.gro")
-    archivo_encontrado = glob.glob(ruta_busqueda)
-    print(f'Archivo actual: {archivo_encontrado}')
+    # Buscamos el archivo .gsd generado por HOOMD
+    ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, f"trajectory_T{T:.2f}.gsd")
+    archivos = glob.glob(ruta_busqueda)
 
-    if not archivo_encontrado:
+    if not archivos:
         print(f"⚠️ No se encontró archivo para T={T:.2f}")
         continue
 
-    archivo_gsd = archivo_encontrado[0]
+    archivo_gsd = archivos[0]
     print(f'Procesando GSD: {archivo_gsd}')
 
     # --- LLAMADA A LA NUEVA FUNCIÓN ---
@@ -106,8 +85,6 @@ for T in temperaturas_originales:
 
     except Exception as e:
         print(f"❌ Error procesando T={T}: {e}")
-
-
 
 # --- GRÁFICA DE COEXISTENCIA ---
 plt.figure(figsize=(8, 6))

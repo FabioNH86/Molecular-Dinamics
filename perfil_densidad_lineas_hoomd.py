@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd 
 import os
 import glob
-from funciones import calcular_perfil_densidad_gsd
+# Asegúrate de que la nueva función esté en funciones.py
+from funciones import calcular_perfil_densidad_gsd 
 
 os.system('clear')
 
@@ -17,7 +18,7 @@ Abril 2026
 """
 
 # -- CONFIGURACIÓN --
-num_prueba = 11
+num_prueba = 1
 num_bines = 100
 start_frame = 10  # Frame inicial para el promedio (ajustar según tu simulación)
 
