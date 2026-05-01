@@ -17,7 +17,7 @@ Abril 2026
 """
 
 # -- CONFIGURACIÓN --
-num_prueba = 1
+num_prueba = 2
 num_bines = 100
 start_frame = 10  # Ajustar según cuándo empiece el equilibrio en tus GSD
 

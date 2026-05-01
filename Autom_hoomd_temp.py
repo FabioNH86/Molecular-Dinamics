@@ -16,7 +16,7 @@ Abril 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 1
+num_prueba = 2
 
 #temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
 temperaturas = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20] 

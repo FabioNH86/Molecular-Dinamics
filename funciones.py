@@ -462,7 +462,7 @@ def calcular_tension_superficial(df_presiones, longitud_partpendicular_interface
 
 def generar_dataframes_todo(archivo):
     # Extraemos la información de cada configuración
-    todo = pd.read_csv(archivo, sep='\s+', header=None)
+    todo = pd.read_csv(archivo, sep=r'\s+', header=None)
     
     todo.columns = ['iconf','rho', 'eki', 'epi', 'etot', 'tempi', 'presi', 'error']
     
@@ -488,6 +488,7 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
 
 
 def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
+    print(f'Iniciando simulación a {temp:.2f}')
     # -- Uso de GPU -- 
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
@@ -506,6 +507,10 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
         ndiv = [28, 14, 14]
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
+        # Cálculo de espaciado
+        dx = lx / ndiv[0]
+        dy = ly / ndiv[1]
+        dz = lz / ndiv[2]
         
 
     # Se crea un estado incial
@@ -515,12 +520,21 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
         snap.particles.N = n_total # Se asigna un número de partículas
         snap.particles.types = ['A']
 
-        # Acomodo de las partículas
-        x = np.linspace(-lx/2, lx/2, ndiv[0], endpoint=False)
-        y = np.linspace(-ly/2, ly/2, ndiv[1], endpoint=False)
-        z = np.linspace(-lz/2, lz/2, ndiv[2], endpoint=False)
-        pos = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3) # Se unen las 3 coordenadas en una cuadrícula 3D
+        if modo == 'isoterma':
+            # Acomodo de las partículas
+            x = np.linspace(-lx/2, lx/2, ndiv[0], endpoint=False)
+            y = np.linspace(-ly/2, ly/2, ndiv[1], endpoint=False)
+            z = np.linspace(-lz/2, lz/2, ndiv[2], endpoint=False)
+        
+        else:
+            x = np.linspace(-lx/2 + dx/2, lx/2 - dx/2, ndiv[0])
+            y = np.linspace(-ly/2 + dy/2, ly/2 - dy/2, ndiv[1])
+            z = np.linspace(-lz/2 + dz/2, lz/2 - dz/2, ndiv[2])
+
+        xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
+        pos = np.stack((xx.flatten(), yy.flatten(), zz.flatten()), axis=-1)
         snap.particles.position[:] = pos # Se copian las coordenadas generadas en un snap de hoomd
+            
 
     sim.create_state_from_snapshot(snap) # Se crea la simulación a partir de las posiciones del snap generado
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp) # Se asignan velocidades iniciales
@@ -571,6 +585,8 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
     gsd_writer = hoomd.write.GSD(trigger=hoomd.trigger.Periodic(50000),
                                  filename=gsd_filename,
                                  mode='wb')
+    
+    
     
     sim.operations.writers.append(gsd_writer)
 
