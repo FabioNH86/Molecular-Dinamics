@@ -18,7 +18,7 @@ Abril 2026
 """
 
 # -- CONFIGURACIÓN --
-num_prueba = 2
+num_prueba = 5
 num_bines = 100
 start_frame = 10  # Frame inicial para el promedio (ajustar según tu simulación)
 

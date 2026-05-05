@@ -1,9 +1,8 @@
-from funciones import calcular_promedios_energía_claude_2, generar_dataframes_todo, calcular_capacidad_calorífica
-import matplotlib.pyplot as plt 
-import numpy as np 
+from funciones import calcular_cv_hoomd
 import pandas as pd 
 import os
 import glob
+import matplotlib.pyplot as plt
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -22,7 +21,7 @@ ronda = 4
 ronda = int(ronda)
 
 temperatura = 0.80
-densidades = [0.002,  0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.012, 0.017, 0.02, 0.03, 0.035, 0.04, 0.045, 0.046, 0.047, 0.048, 0.049, 0.05, 0.055, 0.06, 0.07, 0.08, 0.09, 0.1]
+densidades = [0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.012, 0.017, 0.02, 0.03, 0.035, 0.04, 0.045, 0.046, 0.047, 0.048, 0.049, 0.05, 0.055, 0.06, 0.07, 0.08, 0.09, 0.1]
 
 ruta_comun = f"Resultados/Isotermas/Ronda_{ronda}/Temp={temperatura:.2f}"
 
@@ -34,7 +33,7 @@ if not os.path.exists(ruta_graficos):
     os.makedirs(ruta_graficos)
     print(f"Carpeta creada: {ruta_graficos}")
 
-print(f"Analizando datos para T* = {temperatura} (HOOMD-blue v6.1.1)")
+print(f"Analizando datos para T* = {temperatura}")
 
 cv_calculados = []
 rhos_encontradas = []
@@ -53,18 +52,8 @@ for rho in densidades:
     print(f"📄 Procesando: {os.path.basename(archivo_actual)}")
 
     df = pd.read_csv(archivo_actual, sep=r'\s+')
-    df.columns = [c.split('.')[-1] for c in df.columns]
-    print(f"Columnas detectadas: {df.columns.tolist()}")
-
-    df_produccion = df.iloc[50:].copy()
-
-    print(df_produccion.head())
-
-    N = 5508  # Tu número de partículas
-    var_u = df_produccion['potential_energy'].var()
     
-    # Térmico (gas ideal) + Fluctuación (configuracional)
-    cv = 1.5 + (var_u / (N * (temperatura**2)))
+    cv = calcular_cv_hoomd(df=df, T=temperatura)
 
     cv_calculados.append(cv)
     rhos_encontradas.append(rho)

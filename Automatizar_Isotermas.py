@@ -1,6 +1,4 @@
 import os 
-import shutil
-import subprocess
 import numpy as np
 from funciones import run_hoomd_simulation
 
@@ -18,8 +16,8 @@ Fabio Noriega Hernández
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
 num_prueba = 4
 
-temperatura = 0.80
-densidades = [0.046, 0.047, 0.048, 0.049] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
+temperatura = 1.20
+densidades = [0.10, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2047, 0.21, 0.22, 0.23, 0.24, 0.25, 0.30] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
 ruta_base = f"Resultados/Isotermas/Ronda_{num_prueba}/Temp={temperatura:.2f}"
@@ -44,7 +42,13 @@ for rho in densidades:
     try: 
         os.chdir(ruta_destino)
 
-        run_hoomd_simulation(temp=temperatura, rho=rho, modo='isoterma')
+        run_hoomd_simulation(temp=temperatura, 
+                             rho=rho, 
+                             modo='isoterma', 
+                             ruta_destino=ruta_destino, 
+                             length_minibox=0,
+                             equilibracion=500000,
+                             muestreo=1000000)
 
         print(f"✅ Finalizada Rho={rho:.4f}. Datos guardados en {nombre_carpeta}/")
 

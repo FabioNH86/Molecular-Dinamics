@@ -16,11 +16,10 @@ Abril 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 2
+num_prueba = 6
 
 #temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20] 
-rho_objetivo = 0.1875
+temperaturas = [1.20] 
 ruta_base = f"Resultados/P{num_prueba}_HOOMD_Mie"
 
 
@@ -36,7 +35,12 @@ for T in temperaturas:
 
     try:
         # Llamamos a la función que usa hoomd
-        run_hoomd_simulation(temp=T, rho=rho_objetivo, modo='barrido', ruta_destino=ruta_destino)
+        run_hoomd_simulation(temp=T, 
+                             modo='barrido', 
+                             ruta_destino=ruta_destino, 
+                             length_minibox=30.0, 
+                             equilibracion=2000000,
+                             muestreo=5000000)
 
     except Exception as e:
         print(f"❌ Error en la simulación T={T:.2f}: {e}")

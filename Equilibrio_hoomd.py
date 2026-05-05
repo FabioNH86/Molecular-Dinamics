@@ -14,8 +14,8 @@ Abril 2026
 """
 
 # -- CONFIGURACIÓN --
-num_prueba = 11
-temperaturas_originales = [1.20]
+num_prueba = 5
+temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20] 
 temperaturas = [T for T in temperaturas_originales if T != 0.95]
 
 # La ruta ahora apunta a la carpeta de HOOMD
@@ -40,28 +40,30 @@ for T in temperaturas:
     # ancho_bloques=100 suele ser bueno si guardas datos cada 1000 pasos
     paso_estable = encontrar_equilibrio_hoomd(
         archivo_csv=archivo_actual, 
-        ancho_bloques=100, 
-        mostrar_progreso=True
+        pasos_totales=1500000,
+        ancho_bloques=10, 
+        mostrar_progreso=True,
+        variacion_permitida=0.1
     )
 
-    if paso_estable is not None:
-        # 2. Calcular Presión de Vapor
-        # En HOOMD, el CSV ya contiene la columna 'pressure' (P_total)
-        # Si tu función 'calcular_presiones_vapor' espera el archivo original, pásale el CSV.
-        presiones, presion_vapor = calcular_presiones_vapor(
-            archivo=archivo_actual, 
-            paso_inicial=paso_estable
-        )
+    # if paso_estable is not None:
+    #     # 2. Calcular Presión de Vapor
+    #     # En HOOMD, el CSV ya contiene la columna 'pressure' (P_total)
+    #     # Si tu función 'calcular_presiones_vapor' espera el archivo original, pásale el CSV.
+    #     presiones, presion_vapor = calcular_presiones_vapor(
+    #         archivo=archivo_actual, 
+    #         paso_inicial=paso_estable
+    #     )
 
-        # 3. Calcular Tensión Superficial
-        # Nota: Asegúrate de que la longitud_perpendicular coincida con la lx de tu simulación
-        # Para el modo 'barrido' usamos 48.92 según tu función anterior.
-        calcular_tension_superficial(
-            df_presiones=presiones, 
-            longitud_perpendicular_interface=48.92 
-        )
-    else:
-        print(f"⚠️ Saltando cálculos para T={T}: El sistema no alcanzó estabilidad sostenida.")
+    #     # 3. Calcular Tensión Superficial
+    #     # Nota: Asegúrate de que la longitud_perpendicular coincida con la lx de tu simulación
+    #     # Para el modo 'barrido' usamos 48.92 según tu función anterior.
+    #     calcular_tension_superficial(
+    #         df_presiones=presiones, 
+    #         longitud_perpendicular_interface=48.92 
+    #     )
+    # else:
+    #     print(f"⚠️ Saltando cálculos para T={T}: El sistema no alcanzó estabilidad sostenida.")
 
     print('='*100)
     print('\n')

@@ -486,9 +486,29 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
     print(f'La capacidad calorifica es: {Cv_total}')
     return Cv_total
 
+def calcular_cv_hoomd(df, T=0.7):
+    kB = 1.0
+    df.columns = [c.split('.')[-1] for c in df.columns]
+    print(f"Columnas detectadas: {df.columns.tolist()}")
 
-def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
-    print(f'Iniciando simulación a {temp:.2f}')
+    df_produccion = df.iloc[50:].copy()
+
+    print(df_produccion.head())
+
+    # Cv = (<U²> - <U>²) / kB * T
+    total_energy = df_produccion['kinetic_energy'] + df_produccion['potential_energy']
+    
+    # La parte de arriba del cálculo de la Cv es equivalente a calcular la variación de la energía interna
+    Cv_total = total_energy.var() / (kB * T**2)
+
+    print(f'La capacidad calorifica es: {Cv_total}')
+    return Cv_total
+
+
+
+
+def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, modo='isoterma', rho=0.5):
+    print(f'Iniciando simulación a T={temp:.2f}')
     # -- Uso de GPU -- 
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
@@ -503,12 +523,12 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
         lx = ly = lz = L
 
     else:
-        lx, ly, lz = 48.92, 24.46, 24.46
-        ndiv = [28, 14, 14]
+        lx, ly, lz = 100.0, 25.0, 25.0
+        ndiv = [40, 20, 20]
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
-        # Cálculo de espaciado
-        dx = lx / ndiv[0]
+        # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
+        dx = length_minibox / ndiv[0]
         dy = ly / ndiv[1]
         dz = lz / ndiv[2]
         
@@ -527,7 +547,7 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
             z = np.linspace(-lz/2, lz/2, ndiv[2], endpoint=False)
         
         else:
-            x = np.linspace(-lx/2 + dx/2, lx/2 - dx/2, ndiv[0])
+            x = np.linspace(-length_minibox/2 + dx/2, length_minibox/2 - dx/2, ndiv[0])
             y = np.linspace(-ly/2 + dy/2, ly/2 - dy/2, ndiv[1])
             z = np.linspace(-lz/2 + dz/2, lz/2 - dz/2, ndiv[2])
 
@@ -548,7 +568,7 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
 
     cell = hoomd.md.nlist.Cell(buffer=0.4) # Se espera que la partícula se mueva 0.4 unidades 
     # cell: Divide la caja en rejillas de interacción 
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=coef) # Se define el potecial mie como en el código en C con r_cut = 4.0
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0) # Se define el potecial mie como en el código en C con r_cut = 4.0
     mie.params[('A', 'A')] = dict(epsilon=epsilon, sigma=sigma, n=n_exp, m=m_exp) # Se define la manera de interacción entre las partículas 
 
     # -- Integrador y termostato del ensamble NVT --
@@ -568,8 +588,8 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
 
     # El archivo de salida es una tabla
     if modo == 'isoterma':
-        log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}_rho{rho:.4f}.csv")
-        gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}_rho{rho:.4f}.gsd")
+        log_filename = f"todo_T{temp:.2f}_rho{rho:.4f}.csv"
+        gsd_filename = f"trajectory_T{temp:.2f}_rho{rho:.4f}.gsd"
     else: 
         log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}.csv")
         gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}.gsd")
@@ -581,8 +601,12 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
 
     sim.operations.writers.append(table)
 
+
+    # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
+    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
+                                          hoomd.trigger.Periodic(50000)])
     
-    gsd_writer = hoomd.write.GSD(trigger=hoomd.trigger.Periodic(50000),
+    gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=gsd_filename,
                                  mode='wb')
     
@@ -590,8 +614,8 @@ def run_hoomd_simulation(temp, rho, ruta_destino, modo='isoterma'):
     
     sim.operations.writers.append(gsd_writer)
 
-    sim.run(500000)
-    sim.run(1000000)
+    sim.run(equilibracion)
+    sim.run(muestreo)
 
     print(f'Simulación finalizada: Rho = {rho}')
 
@@ -658,10 +682,31 @@ def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):
     return centros_x, perfil_promedio, desviacion_estandar
 
 
-def encontrar_equilibrio_hoomd(archivo_csv, ancho_bloques=10, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
+def encontrar_equilibrio_hoomd(archivo_csv, pasos_totales, ancho_bloques=10, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
     """
     Analiza el archivo CSV de HOOMD para encontrar el paso donde las energías se estabilizan.
     """
+    try:
+        # 1. Leer CSV. HOOMD a veces usa espacios como delimitadores o comas.
+        # skipinitialspace=True ayuda con los espacios después de las comas.
+        df = pd.read_csv(archivo_csv, skipinitialspace=True)
+        
+        # 2. LIMPIEZA DE NOTACIÓN CIENTÍFICA:
+        # Eliminamos espacios en los nombres de las columnas
+        df.columns = df.columns.str.strip()
+        
+        # Convertimos todo a numérico. 
+        # 'coerce' transformará cualquier cosa que no entienda en NaN.
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # Eliminamos filas con NaN (posibles encabezados repetidos o basura)
+        df = df.dropna().reset_index(drop=True)
+        
+    except Exception as e:
+        print(f"❌ Error al procesar el archivo: {e}")
+        return None
+
     try:
         # HOOMD genera CSV con encabezados, así que es más fácil de leer
         df = pd.read_csv(archivo_csv)
@@ -669,18 +714,29 @@ def encontrar_equilibrio_hoomd(archivo_csv, ancho_bloques=10, variacion_permitid
         print(f"❌ Error al leer {archivo_csv}: {e}")
         return None
 
-    # Mapeo de columnas de HOOMD a nombres amigables
-    # HOOMD usa nombres como 'md.compute.ThermodynamicQuantities.potential_energy'
-    # Buscamos columnas que contengan las palabras clave
-    col_step = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()][0]
-    col_pot = [c for c in df.columns if 'potential_energy' in c.lower()][0]
-    col_kin = [c for c in df.columns if 'kinetic_energy' in c.lower()][0]
+    cols_step_found = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()]
+
+    if cols_step_found:
+        col_step = cols_step_found[0]
+        df['step_axis'] = df[col_step]
+    
+    else:
+        print(f"⚠️ Columna 'step' no encontrada. Generando eje basado en {pasos_totales} pasos.")
+        df['step_axis'] = np.linspace(0, pasos_totales, len(df))
+
+    try:
+        col_pot = [c for c in df.columns if 'potential_energy' in c.lower()][0]
+        col_kin = [c for c in df.columns if 'kinetic_energy' in c.lower()][0]
+        
+    except IndexError:
+        print("❌ No se encontraron columnas de energía potencial o cinética.")
+        return None
     
     # Creamos la columna de Energía Total si no existe
     df['etot'] = df[col_pot] + df[col_kin]
     
-    # Renombramos para compatibilidad con tu lógica
-    energias = df[[col_step, col_kin, col_pot, 'etot']].copy()
+    # Renombramos para compatibilidad
+    energias = df[['step_axis', col_kin, col_pot, 'etot']].copy()
     energias.columns = ['step', 'eki', 'epi', 'etot']
 
     # Calcular promedios por bloque
@@ -689,8 +745,7 @@ def encontrar_equilibrio_hoomd(archivo_csv, ancho_bloques=10, variacion_permitid
         bloque = energias.iloc[i : i + ancho_bloques]
         if len(bloque) < ancho_bloques:
             break
-        resumen = bloque.mean()
-        bloques.append(resumen)
+        bloques.append(bloque.mean())
 
     bloques_df = pd.DataFrame(bloques)
 
@@ -736,3 +791,233 @@ def encontrar_equilibrio_hoomd(archivo_csv, ancho_bloques=10, variacion_permitid
     else:
         print("❌ No se detectó estabilidad sostenida.")
         return None
+
+
+def leer_csv_seguro(archivo_csv):
+    try:
+        # sep=None con engine='python' detecta automáticamente si es coma, espacio o tab
+        # comment='#' ignora las líneas de metadatos de HOOMD
+        df = pd.read_csv(archivo_csv, sep=r'\s+', engine='python')
+        df.columns.str.strip()
+
+        # Limpiar nombres de columnas (quitar espacios y posibles '#' que queden)
+        #df.columns = [c.strip().replace('#', '').strip() for c in df.columns]
+        
+        # Convertir a numérico solo lo que sea necesario
+        df = df.apply(pd.to_numeric, errors='coerce')
+        df = df.dropna(how='all').reset_index(drop=True) # Solo borra si TODA la fila es NaN
+        
+        return df
+    except Exception as e:
+        print(f"❌ Error real en lectura: {e}")
+        return None
+    
+
+def encontrar_equilibrio_hoomd(archivo_csv, pasos_totales=1000000, ancho_bloques=100, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
+    try:
+        # 1. Leer con manejo de espacios
+        df = pd.read_csv(archivo_csv, sep=r'\s+', engine='python')
+        df.columns = df.columns.str.strip() # Limpiar nombres de columnas
+        
+        # 2. Conversión forzada a numérico de todo el DataFrame
+        df = df.apply(pd.to_numeric, errors='coerce')
+        df = df.dropna().reset_index(drop=True)
+        
+        if df.empty:
+            print(f"❌ El archivo {archivo_csv} quedó vacío tras limpiar datos no numéricos.")
+            return None
+
+    except Exception as e:
+        print(f"❌ Error crítico leyendo el archivo: {e}")
+        return None
+
+    # --- Búsqueda de Columnas ---
+    cols_step = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()]
+    cols_pot  = [c for c in df.columns if 'potential_energy' in c.lower() or 'pe' == c.lower()]
+    cols_kin  = [c for c in df.columns if 'kinetic_energy' in c.lower() or 'ke' == c.lower()]
+
+    if not cols_pot or not cols_kin:
+        print(f"❌ No se encontraron energías. Columnas detectadas: {list(df.columns)}")
+        return None
+
+    # Asignar valores
+    step_vals = df[cols_step[0]] if cols_step else np.linspace(0, pasos_totales, len(df))
+    epi_vals = df[cols_pot[0]]
+    eki_vals = df[cols_kin[0]]
+    etot_vals = epi_vals + eki_vals
+
+    # Crear DataFrame de trabajo limpio y garantizado
+    energias = pd.DataFrame({
+        'step': step_vals,
+        'eki': eki_vals,
+        'epi': epi_vals,
+        'etot': etot_vals
+    })
+
+    # --- Cálculo de Bloques (Forma robusta para evitar pérdida de nombres) ---
+    indices_bloques = np.arange(len(energias)) // ancho_bloques
+    bloques_df = energias.groupby(indices_bloques).mean()
+    
+    # Filtrar el último bloque si quedó incompleto
+    if len(energias) % ancho_bloques != 0:
+        bloques_df = bloques_df.iloc[:-1]
+
+    if bloques_df.empty:
+        print("❌ Datos insuficientes para crear bloques de promedio.")
+        return None
+
+    # --- Referencia y Estabilidad ---
+    n_cola = max(1, int(len(bloques_df) * fraccion_cola))
+    # Forzamos que sea una serie con los nombres correctos
+    referencia = bloques_df.tail(n_cola).mean()
+
+    print(f"\n--- Análisis: {os.path.basename(archivo_csv)} ---")
+    # Usamos .get() o acceso directo ahora que garantizamos la creación arriba
+    print(f"Referencia final: Etot={referencia['etot']:.4e} | Ekin={referencia['eki']:.4e}")
+
+    if mostrar_progreso:
+        print(f"{'Paso':<12} | {'E_total':<12} | {'E_Pot':<12} | Estabilidad")
+        print("-" * 60)
+
+    primer_paso_estable = None
+    
+    # Valores de referencia para evitar KeyErrors y divisiones por cero
+    ref_etot = referencia['etot'] if referencia['etot'] != 0 else 1e-9
+    ref_eki  = referencia['eki']  if referencia['eki']  != 0 else 1e-9
+
+    for i, row in bloques_df.iterrows():
+        var_etot = abs((row['etot'] - ref_etot) / ref_etot)
+        var_eki  = abs((row['eki']  - ref_eki)  / ref_eki)
+        
+        estable = var_etot <= variacion_permitida and var_eki <= variacion_permitida
+        
+        if mostrar_progreso and i % 5 == 0:
+            marca = "✅" if estable else "❌"
+            print(f"{row['step']:<12.0f} | {row['etot']:<12.4e} | {row['epi']:<12.4e} | {marca}")
+
+        if estable and primer_paso_estable is None:
+            # Comprobar si el resto de la simulación sigue siendo estable
+            resto = bloques_df.iloc[i:]
+            if all((abs((r['etot'] - ref_etot) / ref_etot) <= variacion_permitida) for _, r in resto.iterrows()):
+                primer_paso_estable = row['step']
+
+    if primer_paso_estable is not None:
+        print(f"✅ Equilibrio detectado en el paso: {primer_paso_estable:.0f}")
+        return int(primer_paso_estable)
+    
+    print("❌ No se detectó una región de estabilidad sostenida.")
+    return None
+
+
+def graficar_analisis_termo(archivo_csv, ruta_graficos, paso_equilibrio, pasos_totales=1500000):
+    """
+    Visualiza las energías y presión, marcando el punto donde el sistema se estabilizó.
+    """
+    try:
+        # 1. Carga y limpieza robusta (como la función anterior)
+        df = pd.read_csv(archivo_csv, sep=r's\+', engine='python')
+        df.columns = df.columns.str.strip()
+        df = df.apply(pd.to_numeric, errors='coerce').dropna().reset_index(drop=True)
+        
+        # 2. Reconstrucción de ejes (basado en lo que ya sabemos de tus archivos)
+        cols_step = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()]
+        step = df[cols_step[0]] if cols_step else np.linspace(0, pasos_totales, len(df))
+        
+        # Identificación flexible de columnas
+        pe = df[[c for c in df.columns if 'potential' in c.lower() or 'pe' == c.lower()][0]]
+        ke = df[[c for c in df.columns if 'kinetic' in c.lower() or 'ke' == c.lower()][0]]
+        etot = pe + ke
+        # La presión no siempre está, la buscamos
+        col_pres = [c for c in df.columns if 'pressure' in c.lower()]
+        press = df[col_pres[0]] if col_pres else np.zeros(len(df))
+
+    except Exception as e:
+        print(f"❌ Error al procesar datos para gráfica: {e}")
+        return
+
+    # --- CONFIGURACIÓN DE LA FIGURA ---
+    fig, axs = plt.subplots(2, 2, figsize=(14, 9), layout='constrained')
+    t_titulo = os.path.basename(archivo_csv).replace('.csv', '')
+    fig.suptitle(f'Análisis de Termodinámica: {t_titulo}', fontsize=16, fontweight='bold')
+
+    # Diccionario para iterar los paneles fácilmente
+    datasets = [
+        (ke, 'Energía Cinética', 'tab:blue', axs[0, 0]),
+        (pe, 'Energía Potencial', 'tab:red', axs[0, 1]),
+        (etot, 'Energía Total', 'tab:purple', axs[1, 0]),
+        (press, 'Presión', 'tab:green', axs[1, 1])
+    ]
+
+    for data, title, color, ax in datasets:
+        # Graficar toda la serie
+        ax.plot(step, data, color=color, alpha=0.3, label='Equilibración')
+        
+        # Si hay un paso de equilibrio, resaltar la zona de "producción"
+        if paso_equilibrio:
+            mask_estable = step >= paso_equilibrio
+            ax.plot(step[mask_estable], data[mask_estable], color=color, linewidth=1.5, label='Producción (Estable)')
+            ax.axvline(x=paso_equilibrio, color='black', linestyle='--', alpha=0.6, label='Punto Eq.')
+        
+        ax.set_title(title, fontweight='semibold')
+        ax.set_xlabel('Timestep')
+        ax.grid(True, alpha=0.3)
+        if title == 'Energía Total': ax.legend(loc='best', fontsize='small')
+
+    # Guardar resultado
+    # (Asegúrate de que ruta_graficos esté definida en tu script principal)
+    plt.savefig(os.path.join(ruta_graficos, f"analisis_{t_titulo}.png"), dpi=300)
+    plt.show()
+
+
+def visualizar_estabilidad_dinamica(archivo_csv, paso_eq, T, ruta_guardado, pasos_totales=1500000):
+    """
+    Replica tu estilo de visualización pero con detección de equilibrio automática.
+    """
+    df = leer_csv_seguro(archivo_csv)
+    if df is None or df.empty:
+        print(f"⚠️ No se pudo graficar {archivo_csv}")
+        return
+
+    # Identificar columnas (ajusta según tus nombres reales en el CSV)
+    c_step = [c for c in df.columns if 'step' in c.lower()][0] if any('step' in c.lower() for c in df.columns) else None
+    c_pot  = [c for c in df.columns if 'potential' in c.lower() or 'pe' == c.lower()][0]
+    c_kin  = [c for c in df.columns if 'kinetic' in c.lower() or 'ke' == c.lower()][0]
+    c_pres = [c for c in df.columns if 'pressure' in c.lower()]
+    
+    # Eje X
+    x = df[c_step] if c_step else np.linspace(0, pasos_totales, len(df))
+    df['etot'] = df[c_pot] + df[c_kin]
+
+    # --- FIGURA ---
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8), layout='constrained')
+    fig.suptitle(f'Análisis de Estabilidad (Temperatura T = {T})', fontsize=16)
+
+    # Configuración de los 4 paneles
+    config_paneles = [
+        (axs[0, 0], df[c_kin], 'Energía Cinética', 'tab:blue'),
+        (axs[0, 1], df[c_pot], 'Energía Potencial', 'tab:red'),
+        (axs[1, 0], df['etot'], 'Energía Total', 'tab:purple'),
+        (axs[1, 1], df[c_pres[0]] if c_pres else np.zeros(len(df)), 'Presión', 'tab:green')
+    ]
+
+    for ax, data, titulo, color in config_paneles:
+        # Graficar toda la simulación en sombra
+        ax.plot(x, data, color=color, alpha=0.3, label='Equilibración')
+        
+        if paso_eq is not None:
+            # Resaltar la zona estable
+            mask = x >= paso_eq
+            ax.plot(x[mask], data[mask], color=color, alpha=1, label='Producción')
+            ax.axvline(x=paso_eq, color='black', linestyle='--', linewidth=1)
+            
+        ax.set_title(titulo)
+        ax.set_xlabel('Paso (Step)')
+        ax.grid(True, linestyle=':', alpha=0.6)
+
+    # Añadir leyenda solo al primer panel para no amontonar
+    axs[0, 0].legend(fontsize='small')
+
+    # Guardar y mostrar
+    nombre_fig = f"Estabilidad_T{T:.2f}.png"
+    plt.savefig(os.path.join(ruta_guardado, nombre_fig), dpi=300)
+    plt.show()

@@ -17,16 +17,20 @@ Abril 2026
 """
 
 # -- CONFIGURACIÓN --
-num_prueba = 2
+num_prueba = 4
 num_bines = 100
 start_frame = 10  # Ajustar según cuándo empiece el equilibrio en tus GSD
 
 # -- DATOS NIST --
-nist_rho_v = [8.450e-04, 3.508e-03, 1.004e-02, 2.304e-02, 4.664e-02, 9.047e-02, 2.047e-01]
-nist_rho_l = [8.643e-01, 8.203e-01, 7.728e-01, 7.203e-01, 6.592e-01, 5.807e-01, 4.367e-01]
+nist_rho_l = [8.643e-01, 8.203e-01, 7.728e-01, 7.203e-01, 6.592e-01, 5.807e-01]
+nist_rho_v = [8.450e-04, 3.508e-03, 1.004e-02, 2.304e-02, 4.664e-02, 9.047e-02]
+
+# -- DATOS SIMULACIONES CÓDIGO DOC. LUIS -- 
+c_rho_l = [0.8732, 0.8295, 0.7842, 0.7317, 0.6732, 0.5858]
+c_rho_v = [0.0008, 0.0026, 0.008, 0.0195, 0.0366, 0.0710]
 
 # Temperaturas (asegúrate de que coincidan con las carpetas generadas)
-temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
+temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10]
 ruta_comun = f'Resultados/P{num_prueba}_HOOMD_Mie'
 ruta_graficos = os.path.join(ruta_comun, 'Graficos_Analisis')
 
@@ -42,8 +46,10 @@ temps_ejecutadas = []
 # Parámetros para promediar las fases en el perfil
 centro = num_bines // 2
 margen = 5
+n = 0
 
 for T in temperaturas_originales:
+    
     nombre_carpeta = f"T={T:.2f}"
     # Buscamos el archivo .gsd generado por HOOMD
     ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, f"trajectory_T{T:.2f}.gsd")
@@ -81,7 +87,11 @@ for T in temperaturas_originales:
         temps_ejecutadas.append(T)
 
         print(f"T={T:.2f} | rho_L: {rho_l:.4f} | rho_V: {rho_v:.4f}")
+        print("\nError absoluto respecto a NIST")
+        print(f"Líquido: {nist_rho_l[n]:.4f} - {rho_l:.4f} = {abs(nist_rho_l[n] - rho_l):.4f}")
+        print(f"Vapor: {nist_rho_v[n]:.4f} - {rho_v:.4f} = {abs(nist_rho_v[n] - rho_v):.4f}")
         print("-" * 60)
+        n += 1
 
     except Exception as e:
         print(f"❌ Error procesando T={T}: {e}")
@@ -102,7 +112,12 @@ plt.scatter(nist_rho_l[:n_puntos], temperaturas_originales[:n_puntos],
 plt.scatter(nist_rho_v[:n_puntos], temperaturas_originales[:n_puntos], 
             marker='x', color='darkred', label='NIST: Vapor', zorder=5)
 
-plt.title(f'Envolvente de Coexistencia - Ensayo {num_prueba}')
+plt.scatter(c_rho_l[:n_puntos], temperaturas_originales[:n_puntos],
+            marker='s', color='green', label='SIM: Líquido', zorder=5)
+plt.scatter(c_rho_v[:n_puntos], temperaturas_originales[:n_puntos],
+            marker='s', color='orange', label='SIM: Vapor', zorder=5)
+
+plt.title(f'Perfil de densidad HOOMD - Ensayo {num_prueba}')
 plt.xlabel('Densidad Reducida $\\rho^*$')
 plt.ylabel('Temperatura Reducida $T^*$')
 plt.legend()
