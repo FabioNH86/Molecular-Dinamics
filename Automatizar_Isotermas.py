@@ -17,7 +17,7 @@ Fabio Noriega Hernández
 num_prueba = 4
 
 temperatura = 1.20
-densidades = [0.10, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2047, 0.21, 0.22, 0.23, 0.24, 0.25, 0.30] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
+densidades = [1.0] # Región para aumentar resolución (Ya calculados): [0.01, 0.05, 0.1, 0.3]
 # print(densidades)
 print(f'Se realizarán un total de: {len(densidades)} simulaciones.')
 ruta_base = f"Resultados/Isotermas/Ronda_{num_prueba}/Temp={temperatura:.2f}"

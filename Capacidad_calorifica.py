@@ -20,8 +20,8 @@ Asesor: Dr. Luis Padilla
 ronda = 4
 ronda = int(ronda)
 
-temperatura = 0.80
-densidades = [0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.012, 0.017, 0.02, 0.03, 0.035, 0.04, 0.045, 0.046, 0.047, 0.048, 0.049, 0.05, 0.055, 0.06, 0.07, 0.08, 0.09, 0.1]
+temperatura = 1.20
+densidades = [0.001, 0.005, 0.01, 0.05, 0.10, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2047, 0.21, 0.22, 0.23, 0.24, 0.25, 0.30, 0.40, 0.50, 1.0]
 
 ruta_comun = f"Resultados/Isotermas/Ronda_{ronda}/Temp={temperatura:.2f}"
 
@@ -61,7 +61,7 @@ for rho in densidades:
 
 # --- GENERACIÓN DEL GRÁFICO ---
 if cv_calculados:
-    plt.figure(figsize=(10, 7))
+    plt.figure(figsize=(20, 15))
     plt.plot(rhos_encontradas, cv_calculados, 'o-', color='#2c3e50', label=f'HOOMD (T*={temperatura})')
     
     for x, y in zip(rhos_encontradas, cv_calculados):

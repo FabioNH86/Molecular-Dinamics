@@ -505,8 +505,6 @@ def calcular_cv_hoomd(df, T=0.7):
     return Cv_total
 
 
-
-
 def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, modo='isoterma', rho=0.5):
     print(f'Iniciando simulación a T={temp:.2f}')
     # -- Uso de GPU -- 
@@ -1021,3 +1019,90 @@ def visualizar_estabilidad_dinamica(archivo_csv, paso_eq, T, ruta_guardado, paso
     nombre_fig = f"Estabilidad_T{T:.2f}.png"
     plt.savefig(os.path.join(ruta_guardado, nombre_fig), dpi=300)
     plt.show()
+
+
+def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homegeno=True):
+    # --- Identificador para archivos ---
+    suffix = "Homog" if sist_homegeno else "Separado"
+    # Incluimos eps_AB en el nombre para no sobreescribir archivos
+    file_id = f"{suffix}_T{temp:.2f}_epsAB{eps_AB:.2f}"
+    
+    print(f'>>> Ejecutando: {file_id}...')
+    # -- Uso de GPU -- 
+    device = hoomd.device.GPU()
+    sim = hoomd.Simulation(device=device, seed=42)
+
+
+    lx, ly, lz = 100.0, 25.0, 25.0
+    ndiv = [40, 20, 20]
+    n_total = ndiv[0] * ndiv[1] * ndiv[2]
+
+    snap = hoomd.Snapshot()
+    if snap.communicator.rank == 0:
+        snap.configuration.box = [lx, ly, lz, 0, 0, 0]
+        snap.particles.N = n_total
+        snap.particles.types = ['A', 'B']
+
+    # Acomodo de las partículas a los extremos de la caja 
+    x = np.linspace(-lx/2 + 0.5, lx/2 - 0.5, ndiv[0])
+    y = np.linspace(-ly/2 + 0.5, ly/2 - 0.5, ndiv[1])
+    z = np.linspace(-lz/2 + 0.5, lz/2 - 0.5, ndiv[2])
+
+    mesh = np.array(np.meshgrid(x, y, z, indexing='ij')).reshape(3, -1).T
+    snap.particles.position[:] = mesh
+
+    if sist_homegeno:
+        type_ids = np.zeros(n_total, dtype=int)
+        type_ids[n_total // 2:] = 1
+        np.random.shuffle(type_ids)
+        snap.particles.typeid[:] = type_ids
+    
+    else:
+        # CREAR TIPOS A PARTIR DE LAS POSICIONES
+        snap.particles.typeid[:] = (mesh[:, 0] >= 0).astype(int)
+
+    sim.create_state_from_snapshot(snap)
+    sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
+
+    cell = hoomd.md.nlist.Cell(buffer=0.4)
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0)
+    mie.params[('A', 'A')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+    mie.params[('B', 'B')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+
+    # Modificación de la interacción cruzada
+    mie.params[('A', 'B')] = dict(epsilon=eps_AB, sigma=1.0, n=12, m=6)
+
+    # -- Integrador y termostato del ensamble NVT --
+    # dt=0.001 y taut=0.01
+    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie])
+    sim.operations.integrator = integrator
+
+    # -- Loggers (Muestra de la información) --
+    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
+    sim.operations.computes.append(thermo)
+
+    # Logger de datos termodinámicos (parecido a todo.dat)
+    logger = hoomd.logging.Logger(categories=['scalar'])
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])
+
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
+                              logger=logger,
+                              output=open(f"log_{file_id}.csv", 'w'))
+
+    # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
+    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
+                                          hoomd.trigger.Periodic(50000)])
+    
+    gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
+                                 filename=f"traj_{file_id}.gsd",
+                                 mode='wb')
+    
+ 
+    sim.operations.writers.append(gsd_writer)
+
+    sim.run(equilibracion)
+    sim.run(muestreo)
+
+    print(f'Simulación finalizada ✅\n')
