@@ -1034,7 +1034,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
 
 
     lx, ly, lz = 100.0, 25.0, 25.0
-    ndiv = [40, 20, 20]
+    ndiv = [64, 32, 25]
     n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
     snap = hoomd.Snapshot()
@@ -1042,6 +1042,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
         snap.configuration.box = [lx, ly, lz, 0, 0, 0]
         snap.particles.N = n_total
         snap.particles.types = ['A', 'B']
+        snap.particles.mass[:] = [1.0] * n_total
 
     # Acomodo de las partículas a los extremos de la caja 
     x = np.linspace(-lx/2 + 0.5, lx/2 - 0.5, ndiv[0])
@@ -1090,6 +1091,8 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
                               logger=logger,
                               output=open(f"log_{file_id}.csv", 'w'))
+    
+    sim.operations.writers.append(table)
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
