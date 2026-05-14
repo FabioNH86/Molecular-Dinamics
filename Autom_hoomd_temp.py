@@ -18,15 +18,15 @@ Abril 2026
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
 num_prueba = 6
 
-#temperaturas = [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20]
-temperaturas = [1.20] 
+temperatura = 1.20
+lista_partículas = [[50, 20, 20], [60, 30, 30], [70, 30, 30], [70, 40, 40]] 
 ruta_base = f"Resultados/P{num_prueba}_HOOMD_Mie"
 
 
 
-for T in temperaturas:
-    nombre_carpeta = f"T={T:.2f}"
-    ruta_destino = os.path.join(ruta_base, nombre_carpeta)
+for n in lista_partículas:
+    nombre_config = f"N_{n[0]}_{n[1]}_{n[2]}"
+    ruta_destino = os.path.join(ruta_base, nombre_config)
 
     # Si la carpeta no existe aún:
     if not os.path.exists(ruta_destino):
@@ -34,16 +34,19 @@ for T in temperaturas:
         print(f"\n📁 Creada carpeta: {ruta_destino}")
 
     try:
+        print(f"Se realizarán un total de {len(lista_partículas)} simulaciones :)")
+        print(f"🧪 Ejecutando simulación para ndiv={n} a T={temperatura}...")
         # Llamamos a la función que usa hoomd
-        run_hoomd_simulation(temp=T, 
+        run_hoomd_simulation(temp=temperatura, 
                              modo='barrido', 
                              ruta_destino=ruta_destino, 
                              length_minibox=30.0, 
-                             equilibracion=2000000,
-                             muestreo=5000000)
+                             equilibracion=1e6,
+                             muestreo=1e6,
+                             ndiv_entrada=n)
 
     except Exception as e:
-        print(f"❌ Error en la simulación T={T:.2f}: {e}")
+        print(f"❌ Error en la configuración {n}: {e}")
         break
 
 print("\n--- Todas las simulaciones han terminado ---")

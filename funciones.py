@@ -505,7 +505,7 @@ def calcular_cv_hoomd(df, T=0.7):
     return Cv_total
 
 
-def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, modo='isoterma', rho=0.5):
+def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, modo='isoterma', rho=0.5, ndiv_entrada=[]):
     print(f'Iniciando simulación a T={temp:.2f}')
     # -- Uso de GPU -- 
     device = hoomd.device.GPU()
@@ -521,8 +521,8 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         lx = ly = lz = L
 
     else:
-        lx, ly, lz = 100.0, 25.0, 25.0
-        ndiv = [40, 20, 20]
+        lx, ly, lz = 100.0, 50.0, 50.0
+        ndiv = ndiv_entrada
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
         # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
