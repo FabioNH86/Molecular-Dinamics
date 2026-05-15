@@ -486,6 +486,7 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
     print(f'La capacidad calorifica es: {Cv_total}')
     return Cv_total
 
+
 def calcular_cv_hoomd(df, T=0.7):
     kB = 1.0
     df.columns = [c.split('.')[-1] for c in df.columns]
@@ -526,10 +527,18 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
         # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
+        ly_minibox = 30.0
+        lz_minibox = 30.0
+
         dx = length_minibox / ndiv[0]
         dy = ly / ndiv[1]
         dz = lz / ndiv[2]
         
+        # Agregando un espacio entre las partículas y las paredes de la caja
+        offset_x = (lx - length_minibox) / 2 - (lx / 2)
+        offset_y = (ly - ly_minibox) / 2 - (ly / 2)
+        offset_z = (lz - lz_minibox) / 2 - (lz / 2)
+
 
     # Se crea un estado incial
     snap = hoomd.Snapshot()
@@ -545,35 +554,35 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
             z = np.linspace(-lz/2, lz/2, ndiv[2], endpoint=False)
         
         else:
-            x = np.linspace(-length_minibox/2 + dx/2, length_minibox/2 - dx/2, ndiv[0])
-            y = np.linspace(-ly/2 + dy/2, ly/2 - dy/2, ndiv[1])
-            z = np.linspace(-lz/2 + dz/2, lz/2 - dz/2, ndiv[2])
+            pos = []
+            for i in range(ndiv[0]):
+                for j in range(ndiv[1]):
+                    for k in range(ndiv[2]):
+                        x = i * dx + offset_x + (dx / 2)
+                        y = j * dy + offset_y + (dy / 2)
+                        z = k * dz + offset_z + (dz / 2)
+                        pos.append([x, y, z])
 
-        xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
-        pos = np.stack((xx.flatten(), yy.flatten(), zz.flatten()), axis=-1)
+        # xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
+        # pos = np.stack((xx.flatten(), yy.flatten(), zz.flatten()), axis=-1)
         snap.particles.position[:] = pos # Se copian las coordenadas generadas en un snap de hoomd
             
 
     sim.create_state_from_snapshot(snap) # Se crea la simulación a partir de las posiciones del snap generado
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp) # Se asignan velocidades iniciales
 
-    # Configuración del potencial
-    n_exp, m_exp = 12.0, 6.0
-    epsilon, sigma = 1.0, 1.0
 
-    # Factor de corrección de largo alcance para Mie
-    coef = (n_exp / (n_exp - m_exp)) * (n_exp / m_exp) ** (m_exp / (n_exp - m_exp))
 
     cell = hoomd.md.nlist.Cell(buffer=0.4) # Se espera que la partícula se mueva 0.4 unidades 
     # cell: Divide la caja en rejillas de interacción 
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0) # Se define el potecial mie como en el código en C con r_cut = 4.0
-    mie.params[('A', 'A')] = dict(epsilon=epsilon, sigma=sigma, n=n_exp, m=m_exp) # Se define la manera de interacción entre las partículas 
+    lj = hoomd.md.pair.LJ(nlist=cell, default_r_cut=4.0, mode="shift") # Se define el potecial mie como en el código en C con r_cut = 4.0
+    lj.params[('A', 'A')] = dict(epsilon=1.0, sigma=1.0)
 
     # -- Integrador y termostato del ensamble NVT --
     # dt=0.001 y taut=0.01
     termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
-    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie])
+    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[lj])
     sim.operations.integrator = integrator
 
     # -- Loggers (Muestra de la información) --

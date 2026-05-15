@@ -19,10 +19,16 @@ Abril 2026
 num_prueba = 6
 
 temperatura = 1.20
-lista_partículas = [[50, 20, 20], [60, 30, 30], [70, 30, 30], [70, 40, 40]] 
-ruta_base = f"Resultados/P{num_prueba}_HOOMD_Mie"
+lista_partículas = [
+    [30, 14, 14], # ~6k partículas (Rápida)
+    [40, 18, 17], # ~12k partículas (Recomendada)
+    [50, 20, 20]  # ~20k partículas (Alta precisión)
+]
+ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
-
+# Parámetros de tiempo
+pasos_equil = int(100)
+pasos_muestreo = int(200)
 
 for n in lista_partículas:
     nombre_config = f"N_{n[0]}_{n[1]}_{n[2]}"
@@ -41,8 +47,8 @@ for n in lista_partículas:
                              modo='barrido', 
                              ruta_destino=ruta_destino, 
                              length_minibox=30.0, 
-                             equilibracion=1e6,
-                             muestreo=1e6,
+                             equilibracion=pasos_equil,
+                             muestreo=pasos_muestreo,
                              ndiv_entrada=n)
 
     except Exception as e:
