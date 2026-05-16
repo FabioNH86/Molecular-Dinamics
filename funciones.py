@@ -527,8 +527,8 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
         # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
-        ly_minibox = 30.0
-        lz_minibox = 30.0
+        ly_minibox = 40.0
+        lz_minibox = 40.0
 
         dx = length_minibox / ndiv[0]
         dy = ly / ndiv[1]

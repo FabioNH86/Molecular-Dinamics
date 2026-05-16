@@ -20,9 +20,9 @@ num_prueba = 6
 
 temperatura = 1.20
 lista_partículas = [
-    [30, 14, 14], # ~6k partículas (Rápida)
-    [40, 18, 17], # ~12k partículas (Recomendada)
-    [50, 20, 20]  # ~20k partículas (Alta precisión)
+    [40, 40, 40], # ~64k partículas (Rápida)
+    [50, 50, 50], # ~125k partículas (Recomendada)
+    [60, 60, 60]  # ~216k partículas (Alta precisión)
 ]
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
@@ -46,7 +46,7 @@ for n in lista_partículas:
         run_hoomd_simulation(temp=temperatura, 
                              modo='barrido', 
                              ruta_destino=ruta_destino, 
-                             length_minibox=30.0, 
+                             length_minibox=40.0, 
                              equilibracion=pasos_equil,
                              muestreo=pasos_muestreo,
                              ndiv_entrada=n)
