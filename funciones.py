@@ -531,13 +531,13 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         lz_minibox = 40.0
 
         dx = length_minibox / ndiv[0]
-        dy = ly / ndiv[1]
-        dz = lz / ndiv[2]
+        dy = ly_minibox / ndiv[1]
+        dz = lz_minibox / ndiv[2]
         
         # Agregando un espacio entre las partículas y las paredes de la caja
-        offset_x = (lx - length_minibox) / 2 - (lx / 2)
-        offset_y = (ly - ly_minibox) / 2 - (ly / 2)
-        offset_z = (lz - lz_minibox) / 2 - (lz / 2)
+        offset_x = -length_minibox / 2
+        offset_y = -ly_minibox / 2
+        offset_z = -lz_minibox / 2
 
 
     # Se crea un estado incial
@@ -565,7 +565,7 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
 
         # xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
         # pos = np.stack((xx.flatten(), yy.flatten(), zz.flatten()), axis=-1)
-        snap.particles.position[:] = pos # Se copian las coordenadas generadas en un snap de hoomd
+            snap.particles.position[:] = pos # Se copian las coordenadas generadas en un snap de hoomd
             
 
     sim.create_state_from_snapshot(snap) # Se crea la simulación a partir de las posiciones del snap generado

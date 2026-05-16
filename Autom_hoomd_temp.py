@@ -24,11 +24,12 @@ lista_partículas = [
     [50, 50, 50], # ~125k partículas (Recomendada)
     [60, 60, 60]  # ~216k partículas (Alta precisión)
 ]
+
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
 # Parámetros de tiempo
-pasos_equil = int(100)
-pasos_muestreo = int(200)
+pasos_equil = int(5e5)
+pasos_muestreo = int(1e6)
 
 for n in lista_partículas:
     nombre_config = f"N_{n[0]}_{n[1]}_{n[2]}"
