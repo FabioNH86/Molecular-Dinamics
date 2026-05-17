@@ -30,7 +30,7 @@ c_rho_l = [0.8732, 0.8295, 0.7842, 0.7317, 0.6732, 0.5858]
 c_rho_v = [0.0008, 0.0026, 0.008, 0.0195, 0.0366, 0.0710]
 
 # Temperaturas (asegúrate de que coincidan con las carpetas generadas)
-temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10]
+temperaturas_originales = [0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20]
 ruta_comun = f'Resultados/P{num_prueba}_HOOMD_Mie'
 ruta_graficos = os.path.join(ruta_comun, 'Graficos_Analisis')
 
@@ -49,6 +49,53 @@ margen = 5
 n = 0
 
 for T in temperaturas_originales:
+
+    if T == 1.20:
+        ruta_comun = f'/run/media/fabio-noriega/Almacen_Fabio/Simulaciones/Resultados/HOOMD/P{num_prueba}_HOOMD_Mie'
+        nombre_carpeta = 'N_71_45_25'
+
+        ruta_busqueda = os.path.join(ruta_comun, nombre_carpeta, f"trajectory_T{T:.2f}.gsd")
+        archivos = glob.glob(ruta_busqueda)
+
+        if not archivos:
+            print(f"⚠️ No se encontró archivo para T={T:.2f}: Aerchivo buscado en {ruta_busqueda}")
+            continue
+
+        archivo_gsd = archivos[0]
+        print(f'Procesando GSD: {archivo_gsd}')
+
+        try:
+            x, rho_prom, rho_std = calcular_perfil_densidad_gsd(
+                gsd_file=archivo_gsd, 
+                start_frame=start_frame, 
+                num_bines=num_bines
+            )
+
+            bines_liquido = rho_prom[centro - margen : centro + margen]
+            rho_l = bines_liquido.mean()
+            std_l = rho_std[centro - margen : centro + margen].mean()
+
+            bines_vapor = np.concatenate([rho_prom[:10], rho_prom[-10:]])
+            rho_v = bines_vapor.mean()
+            std_v = rho_std[:10].mean()
+
+            densidades_liquido.append(rho_l)
+            std_liquido.append(std_l)
+            densidades_vapor.append(rho_v)
+            std_vapor.append(std_v)
+            temps_ejecutadas.append(T)
+
+            print(f"T={T:.2f} | rho_L: {rho_l:.4f} | rho_V: {rho_v:.4f}")
+            print("\nError absoluto respecto a NIST")
+            print(f"Líquido: {nist_rho_l[n]:.4f} - {rho_l:.4f} = {abs(nist_rho_l[n] - rho_l):.4f}")
+            print(f"Vapor: {nist_rho_v[n]:.4f} - {rho_v:.4f} = {abs(nist_rho_v[n] - rho_v):.4f}")
+            print("-" * 60)
+            n += 1
+
+        except Exception as e:
+            print(f"❌ Error procesando T={T}: {e}")
+        continue
+
     
     nombre_carpeta = f"T={T:.2f}"
     # Buscamos el archivo .gsd generado por HOOMD

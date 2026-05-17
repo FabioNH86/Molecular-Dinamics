@@ -621,9 +621,7 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
     
     sim.operations.writers.append(gsd_writer)
     
-    zero_momentum = hoomd.md.update.ZeroMomentum(
-    trigger=hoomd.trigger.Periodic(100)
-)
+    zero_momentum = hoomd.md.update.ZeroMomentum(trigger=hoomd.trigger.Periodic(50))
     
     sim.operations.updaters.append(zero_momentum)
     

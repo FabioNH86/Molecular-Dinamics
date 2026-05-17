@@ -20,7 +20,7 @@ num_prueba = 6
 
 temperatura = 1.20
 lista_partículas = [
-    [71, 45, 25] # 80175 partículas 
+    [66, 45, 25] # 80175 partículas 
 ]
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
