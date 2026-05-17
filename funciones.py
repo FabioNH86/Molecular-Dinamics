@@ -619,13 +619,14 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
                                  filename=gsd_filename,
                                  mode='wb')
     
-    remover_drift = hoomd.update.ZeroMomentum(
-        trigger=hoomd.trigger.Periodic(100) # Se ejecuta cada 100 pasos
-    )
-    
-    sim.operations.updaters.append(remover_drift)
-    
     sim.operations.writers.append(gsd_writer)
+    
+    zero_momentum = hoomd.md.update.ZeroMomentum(
+    trigger=hoomd.trigger.Periodic(100)
+)
+    
+    sim.operations.updaters.append(zero_momentum)
+    
 
     sim.run(equilibracion)
     sim.run(muestreo)
