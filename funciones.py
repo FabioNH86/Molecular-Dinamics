@@ -490,11 +490,11 @@ def calcular_capacidad_calorífica(dataframe, T=0.7):
 def calcular_cv_hoomd(df, T=0.7):
     kB = 1.0
     df.columns = [c.split('.')[-1] for c in df.columns]
-    print(f"Columnas detectadas: {df.columns.tolist()}")
+    # print(f"Columnas detectadas: {df.columns.tolist()}")
 
     df_produccion = df.iloc[50:].copy()
 
-    print(df_produccion.head())
+    # print(df_produccion.head())
 
     # Cv = (<U²> - <U>²) / kB * T
     total_energy = df_produccion['kinetic_energy'] + df_produccion['potential_energy']

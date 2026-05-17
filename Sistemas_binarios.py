@@ -29,8 +29,8 @@ lista_temperaturas = [0.5, 1.0, 1.5]  # De frío a caliente
 lista_repulsiones = [0.1, 1.0]        # 0.1: Muy repulsivo (fomenta desmezcla), 1.0: Ideal
 
 # Parámetros de tiempo
-pasos_equil = int(5e5)
-pasos_muestreo = int(1e6)
+pasos_equil = int(1000)
+pasos_muestreo = int(2000)
 
 total_sims = len(lista_temperaturas) * len(lista_repulsiones) * 2 # Homogeneo y separado
 print(f'Se realizarán un total de: {total_sims} simulaciones.')

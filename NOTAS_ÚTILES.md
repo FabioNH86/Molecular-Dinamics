@@ -12,3 +12,5 @@ Ver sesión de tmux: `tmux attach -t simulacion`
 Lista tmux: `tmux ls`
 
 Mover gif de lugar: `cp /tmp/untitled.gif /home/fabio-noriega/Documentos/Coding/CIATEC/Resultados/P11_LV_Mie/T=0.60/`
+
+Mover archivos entre pc's: `scp -r usuario@servidor_remoto:/ruta/de/la/carpeta/remota /ruta/local/donde/guardar`
