@@ -591,7 +591,9 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
 
     # Logger de datos termodinámicos (parecido a todo.dat)
     logger = hoomd.logging.Logger(categories=['scalar'])
-    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])
+
+    logger.add(sim, quantities=['timestep'])
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure', 'pressure_tensor'])
 
     # El archivo de salida es una tabla
     if modo == 'isoterma':
@@ -617,7 +619,11 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
                                  filename=gsd_filename,
                                  mode='wb')
     
+    remover_drift = hoomd.update.ZeroMomentum(
+        trigger=hoomd.trigger.Periodic(100) # Se ejecuta cada 100 pasos
+    )
     
+    sim.operations.updaters.append(remover_drift)
     
     sim.operations.writers.append(gsd_writer)
 
@@ -921,21 +927,30 @@ def graficar_analisis_termo(archivo_csv, ruta_graficos, paso_equilibrio, pasos_t
     Visualiza las energías y presión, marcando el punto donde el sistema se estabilizó.
     """
     try:
-        # 1. Carga y limpieza robusta (como la función anterior)
-        df = pd.read_csv(archivo_csv, sep=r's\+', engine='python')
+        # 1. Carga con el separador correcto corregido (\s+)
+        df = pd.read_csv(archivo_csv, sep=r'\s+', engine='python')
         df.columns = df.columns.str.strip()
         df = df.apply(pd.to_numeric, errors='coerce').dropna().reset_index(drop=True)
         
-        # 2. Reconstrucción de ejes (basado en lo que ya sabemos de tus archivos)
-        cols_step = [c for c in df.columns if 'step' in c.lower() or 'timestep' in c.lower()]
-        step = df[cols_step[0]] if cols_step else np.linspace(0, pasos_totales, len(df))
+        # 2. Identificación flexible e inmune a los nombres largos de HOOMD
+        cols_step = [c for c in df.columns if 'step' in c.lower()]
         
-        # Identificación flexible de columnas
-        pe = df[[c for c in df.columns if 'potential' in c.lower() or 'pe' == c.lower()][0]]
-        ke = df[[c for c in df.columns if 'kinetic' in c.lower() or 'ke' == c.lower()][0]]
-        etot = pe + ke
-        # La presión no siempre está, la buscamos
+        # Si no existe la columna timestep en el CSV, calculamos el paso real 
+        # multiplicando el índice de la fila por el intervalo de guardado (10000)
+        if cols_step:
+            step = df[cols_step[0]]
+        else:
+            print("⚠️ Columna 'timestep' no encontrada en el CSV. Reconstruyendo eje X cada 10k pasos.")
+            step = df.index * 10000  # <--- Esto mapea el eje X con tus datos reales de 10k en 10k
+        
+        # Buscar las columnas por coincidencia parcial de texto de manera limpia
+        col_pe = [c for c in df.columns if 'potential' in c.lower()][0]
+        col_ke = [c for c in df.columns if 'kinetic_energy' in c.lower() or 'kinetic_' in c.lower() and 'temperature' not in c.lower()][0]
         col_pres = [c for c in df.columns if 'pressure' in c.lower()]
+        
+        pe = df[col_pe]
+        ke = df[col_ke]
+        etot = pe + ke
         press = df[col_pres[0]] if col_pres else np.zeros(len(df))
 
     except Exception as e:

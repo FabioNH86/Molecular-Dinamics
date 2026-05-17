@@ -20,10 +20,7 @@ num_prueba = 6
 
 temperatura = 1.20
 lista_partículas = [
-    [40, 40, 40], # ~64k partículas (Rápida)
-    [50, 50, 50], # ~125k partículas (Recomendada)
-    [60, 60, 60], # ~216k partículas (Alta precisión)
-    [70, 70, 70], # ~343k partículas (Muy alta precisión, pero lenta)
+    [71, 45, 25] # 80175 partículas 
 ]
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
