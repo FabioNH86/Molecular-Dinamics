@@ -506,7 +506,7 @@ def calcular_cv_hoomd(df, T=0.7):
     return Cv_total
 
 
-def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, modo='isoterma', rho=0.5, ndiv_entrada=[]):
+def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, muestreo, periodic_zeromomentum, modo='isoterma', rho=0.5, ndiv_entrada=[]):
     print(f'Iniciando simulación a T={temp:.2f}')
     # -- Uso de GPU -- 
     device = hoomd.device.GPU()
@@ -621,7 +621,7 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
     
     sim.operations.writers.append(gsd_writer)
     
-    zero_momentum = hoomd.md.update.ZeroMomentum(trigger=hoomd.trigger.Periodic(50))
+    zero_momentum = hoomd.md.update.ZeroMomentum(trigger=hoomd.trigger.Periodic(periodic_zeromomentum))
     
     sim.operations.updaters.append(zero_momentum)
     
