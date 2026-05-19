@@ -20,7 +20,6 @@ num_prueba = 6
 
 temperatura = 1.20
 lista_partículas = [
-    [66, 45, 25], # 80175 partículas 
     [64, 45, 25], # 77325 partículas
     [62, 45, 25], # 74475 partículas
     [60, 45, 25], # 71625 partículas    
