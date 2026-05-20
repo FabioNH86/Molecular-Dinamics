@@ -31,7 +31,7 @@ ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 pasos_equil = int(5e5)
 pasos_muestreo = int(1e6)
 
-print(f"Se realizarán un total de {len(lista_partículas)*len(lista_zero_momentum)} simulaciones :)")
+print(f"Se realizarán un total de {len(lista_partículas)*len(lista_zero_momentum)*len(temperaturas)} simulaciones :)")
 
 for n in lista_partículas:
     nombre_config = f"N_{n[0]}_{n[1]}_{n[2]}"
