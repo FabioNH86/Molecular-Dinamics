@@ -16,18 +16,14 @@ Abril 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 6
+num_prueba = 7
 
-temperatura = 1.20
+temperaturas = [0.6, 0.7, 0.8, 0.9, 1.0, 1.10, 1.20]
 lista_partículas = [
-    [64, 45, 25], # 77325 partículas
-    [62, 45, 25], # 74475 partículas
-    [60, 45, 25], # 71625 partículas    
-    [55, 45, 25], # 67500 partículas
-    [50, 45, 25], # 63750 partículas
+    [64, 45, 25] # 77325 partículas 
 ]
 
-lista_zero_momentum = [100, 500, 1000] # Frecuencia de aplicación del zero momentum (en pasos)
+lista_zero_momentum = [100] # Frecuencia de aplicación del zero momentum (en pasos)
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
@@ -50,12 +46,13 @@ for n in lista_partículas:
         for each in lista_zero_momentum:
             print(f"   - Zero Momentum cada {each} pasos")
 
-            print(f"🧪 Ejecutando simulación para ndiv={n} a T={temperatura}...")
-            # Llamamos a la función que usa hoomd
-            run_hoomd_simulation(temp=temperatura, 
-                                modo='barrido', 
-                                ruta_destino=ruta_destino, 
-                                length_minibox=45.0, 
+            for temperatura in temperaturas:
+                print(f"🧪 Ejecutando simulación para ndiv={n} a T={temperatura}...")
+                # Llamamos a la función que usa hoomd
+                run_hoomd_simulation(temp=temperatura, 
+                                    modo='barrido', 
+                                    ruta_destino=ruta_destino, 
+                                    length_minibox=70.0, 
                                 equilibracion=pasos_equil,
                                 muestreo=pasos_muestreo,
                                 ndiv_entrada=n,

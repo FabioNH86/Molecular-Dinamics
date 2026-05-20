@@ -626,6 +626,15 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
     sim.operations.updaters.append(zero_momentum)
     
 
+    # Fase de suavizado inicial
+    integrator.dt = 0.00001
+    sim.run(5000)
+
+    integrator.dt = 0.0001
+    sim.run(5000)
+
+    integrator.dt = 0.001 
+
     sim.run(equilibracion)
     sim.run(muestreo)
 
