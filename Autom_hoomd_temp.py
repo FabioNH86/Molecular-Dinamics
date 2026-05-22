@@ -18,7 +18,7 @@ Abril 2026
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
 num_prueba = 7
 
-temperaturas = [0.6, 0.7, 0.8, 0.9, 1.0, 1.10, 1.20]
+temperaturas = [1.20]
 lista_partículas = [
     [64, 45, 25] # 77325 partículas 
 ]
@@ -52,7 +52,7 @@ for n in lista_partículas:
                 run_hoomd_simulation(temp=temperatura, 
                                     modo='barrido', 
                                     ruta_destino=ruta_destino, 
-                                    length_minibox=70.0, 
+                                    length_minibox=60.0, 
                                 equilibracion=pasos_equil,
                                 muestreo=pasos_muestreo,
                                 ndiv_entrada=n,
