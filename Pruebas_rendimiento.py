@@ -6,7 +6,7 @@ import numpy as np
 # 1. CONFIGURACIÓN DEL SISTEMA MASIVO
 # =============================================================================
 # 1 millón de partículas para poner a prueba los 8GB de la RTX 4060
-n_particles = 4_000_000  
+n_particles = 3_000_000  
 box_length = 150.0  # Caja lo suficientemente grande para una densidad estándar
 
 print(f"--- Creando snapshot para {n_particles:,} partículas ---")
