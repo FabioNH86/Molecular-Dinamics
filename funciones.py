@@ -1208,9 +1208,9 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     cell = hoomd.md.nlist.Cell(buffer=0.4)
     mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0)
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
+    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
