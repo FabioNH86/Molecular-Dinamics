@@ -1249,6 +1249,34 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     
     sim.operations.writers.append(gsd_writer)
 
+    print("--- Relajando el sistema con FIRE para eliminar solapamientos ---")
+    # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
+    nve_displacement = hoomd.md.methods.Displacement(filter=hoomd.filter.All())
+    
+    # 2. Configuramos el optimizador FIRE
+    fire = hoomd.md.minimize.FIRE(dt=0.0005, 
+                                  force_tol=1e-2, 
+                                  ang_tol=1e-2, 
+                                  energy_tol=1e-5, 
+                                  methods=[nve_displacement], 
+                                  forces=[mie, armonico])
+    
+    # Asignamos FIRE temporalmente a la simulación
+    sim.operations.integrator = fire
+    
+    # Corremos FIRE hasta que converja o alcance un máximo de 800 pasos
+    while not fire.converged and sim.timestep < 800:
+        sim.run(20)
+        
+    print(f"Sistema minimizado en el paso: {sim.timestep}. ¿Convergió?: {fire.converged}")
+
+    # 3. Quitamos FIRE y restablecemos tu integrador NVT original para la producción
+    sim.operations.integrator = integrator
+    
+    # Resetear el contador de pasos si quieres que tu muestreo/equilibrio empiece en 0
+    sim.timestep = 0 
+
+    # --- AHORA SÍ, CORRES TUS ETAPAS ORIGINALES ---
     sim.run(equilibracion)
     sim.run(muestreo)
 
