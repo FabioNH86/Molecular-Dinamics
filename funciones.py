@@ -1141,3 +1141,83 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     sim.run(muestreo)
 
     print(f'Simulación finalizada ✅\n')
+
+
+def rum_polimer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, eps_SP=1.0):
+    # --- Identificador para archivos ---
+    file_id = f"PolimerSolvente_T{temp:.2f}_epsSP{eps_SP:.2f}"
+    
+    print(f'>>> Ejecutando: {file_id}...')
+    # -- Uso de GPU -- 
+    device = hoomd.device.GPU()
+    sim = hoomd.Simulation(device=device, seed=42)
+
+    lx, ly, lz = 100.0, 50.0, 50.0
+    n_polimeros = 10
+    n_monomeros_totales = n_polimeros * monomeros_por_polimero
+
+    snap = hoomd.Snapshot()
+    if snap.communicator.rank == 0:
+        snap.configuration.box = [lx, ly, lz, 0, 0, 0]
+        snap.particles.N = n_monomeros_totales
+        snap.particles.types = ['S', 'P'] # S para solvente, P para polímero
+        snap.particles.mass[:] = [1.0] * n_total
+
+    # Acomodo de las partículas en cadenas lineales
+    for i in range(n_polimeros):
+        start_idx = i * monomeros_por_polimero
+        end_idx = start_idx + monomeros_por_polimero
+        x_start = -lx/2 + (i + 1) * (lx / (n_polimeros + 1))
+        y_start = -ly/2 + 0.5
+        z_start = -lz/2 + 0.5
+        
+        for j in range(monomeros_por_polimero):
+            idx = start_idx + j
+            snap.particles.position[idx] = [x_start, y_start + j * 0.5, z_start]
+
+            # Asignar tipo S o P alternadamente para crear heterogeneidad
+            snap.particles.typeid[idx] = j % 2
+
+    sim.create_state_from_snapshot(snap)
+    sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
+
+    cell = hoomd.md.nlist.Cell(buffer=0.4)
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0)
+    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1)
+    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
+    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
+
+    # -- Integrador y termostato del ensamble NVT --
+    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie])
+    sim.operations.integrator = integrator
+
+    # -- Loggers (Muestra de la información) --
+    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
+    sim.operations.computes.append(thermo)
+
+    # Logger de datos termodinámicos (parecido a todo.dat)
+    logger = hoomd.logging.Logger(categories=['scalar'])
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
+
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
+                              logger=logger,
+                              output=open(f"log_{file_id}.csv", 'w'))       
+    
+    sim.operations.writers.append(table)
+
+    # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
+    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
+                                          hoomd.trigger.Periodic(50000)])       
+    
+    gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
+                                 filename=f"traj_{file_id}.gsd",
+                                 mode='wb') 
+    
+    sim.operations.writers.append(gsd_writer)
+
+    sim.run(equilibracion)
+    sim.run(muestreo)
+
+    print(f'Simulación finalizada ✅\n >> Condiciones: T={temp}, eps_SP={eps_SP}, Monómeros/Polímero={monomeros_por_polimero}, Concentrción de polímeros={n_polimeros / (lx * ly * lz):.4f}\n')

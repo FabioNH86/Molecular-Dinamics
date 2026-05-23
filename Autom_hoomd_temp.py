@@ -25,7 +25,7 @@ lista_partículas = [
 
 lista_zero_momentum = [100] # Frecuencia de aplicación del zero momentum (en pasos)
 
-longitudes_para_minibox = [40, 45, 50, 60] # Longitud de la caja para la minimización de energía (en unidades reducidas)
+longitudes_para_minibox = [55] # Longitud de la caja para la minimización de energía (en unidades reducidas)
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
