@@ -1143,7 +1143,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
-def rum_polimer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, eps_SP=1.0):
+def run_polymer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, n_solvente,eps_SP=1.0):
     # --- Identificador para archivos ---
     file_id = f"PolimerSolvente_T{temp:.2f}_epsSP{eps_SP:.2f}"
     
@@ -1153,44 +1153,77 @@ def rum_polimer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, eps
     sim = hoomd.Simulation(device=device, seed=42)
 
     lx, ly, lz = 100.0, 50.0, 50.0
-    n_polimeros = 10
-    n_monomeros_totales = n_polimeros * monomeros_por_polimero
+    n_monomeros_totales = 120000
+    n_polimeros = n_monomeros_totales // monomeros_por_polimero
+    
+    n_total = n_monomeros_totales + n_solvente
+
+    n_enlaces = n_polimeros * (monomeros_por_polimero - 1) 
 
     snap = hoomd.Snapshot()
     if snap.communicator.rank == 0:
         snap.configuration.box = [lx, ly, lz, 0, 0, 0]
-        snap.particles.N = n_monomeros_totales
+        snap.particles.N = n_total
         snap.particles.types = ['S', 'P'] # S para solvente, P para polímero
         snap.particles.mass[:] = [1.0] * n_total
 
-    # Acomodo de las partículas en cadenas lineales
-    for i in range(n_polimeros):
-        start_idx = i * monomeros_por_polimero
-        end_idx = start_idx + monomeros_por_polimero
-        x_start = -lx/2 + (i + 1) * (lx / (n_polimeros + 1))
-        y_start = -ly/2 + 0.5
-        z_start = -lz/2 + 0.5
-        
-        for j in range(monomeros_por_polimero):
-            idx = start_idx + j
-            snap.particles.position[idx] = [x_start, y_start + j * 0.5, z_start]
+        # Polímero bond
+        snap.bonds.N = n_enlaces
+        snap.bonds.types = ['polymer_bond']
 
-            # Asignar tipo S o P alternadamente para crear heterogeneidad
-            snap.particles.typeid[idx] = j % 2
+        type_S_id = snap.particles.types.index('S')
+        type_P_id = snap.particles.types.index('P')
+
+        # Construcción de enlaces para los polímeros
+        bond_counter = 0
+        # Acomodo de las partículas en cadenas lineales
+        for i in range(n_polimeros):
+            start_idx = i * monomeros_por_polimero
+            end_idx = start_idx + monomeros_por_polimero
+            x_start = -lx/2 + (i + 1) * (lx / (n_polimeros + 1))
+            y_start = -ly/2 + 0.5
+            z_start = -lz/2 + 0.5
+            
+            for j in range(monomeros_por_polimero):
+                idx = start_idx + j
+                snap.particles.position[idx] = [x_start, y_start + j * 0.9, z_start]
+                snap.particles.typeid[idx] = type_P_id
+
+                # Crear enlace con el monómero anterior
+                if j > 0:
+                    snap.bonds.group[bond_counter] = [idx - 1, idx]
+                    snap.bonds.typeid[bond_counter] = 0  # 'polymer_bond'
+                    bond_counter += 1
+        # Solvente
+        np.random.seed(42)
+        pos_solvente = np.random.uniform(low=[-lx/2 + 0.5, -ly/2 + 0.5, -lz/2 + 0.5],
+                                          high=[lx/2 - 0.5, ly/2 - 0.5, lz/2 - 0.5],
+                                          size=(n_solvente, 3))
+        
+        snap.particles.position[n_monomeros_totales:] = pos_solvente
+        snap.particles.typeid[n_monomeros_totales:] = type_S_id
 
     sim.create_state_from_snapshot(snap)
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
     mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0)
+
     mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1)
     mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
     mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
 
+    # Fuerza de enlace para mantener la integridad de los polímeros
+    armonico = hoomd.md.bond.Harmonic(nlist=cell)
+    armonico.params['polymer_bond'] = dict(k=100.0, r0=0.9)
+    
+
     # -- Integrador y termostato del ensamble NVT --
     termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
-    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie])
+
+
+    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie, armonico])
     sim.operations.integrator = integrator
 
     # -- Loggers (Muestra de la información) --

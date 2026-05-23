@@ -55,7 +55,8 @@ for n in lista_partículas:
                     run_hoomd_simulation(temp=temperatura, 
                                         modo='barrido', 
                                         ruta_destino=ruta_destino, 
-                                        length_minibox=longitud,                                     equilibracion=pasos_equil,
+                                        length_minibox=longitud,                                     
+                                        equilibracion=pasos_equil,
                                         muestreo=pasos_muestreo,
                                         ndiv_entrada=n,
                                         periodic_zeromomentum=each)
