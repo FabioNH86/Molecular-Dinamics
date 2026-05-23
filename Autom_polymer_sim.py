@@ -35,7 +35,7 @@ pasos_muestreo = int(1e6)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")
-print(f"Parámetros fijos: {n_monomeros_totales} monómeros totales y {n_solvente} partículas de solvente (Conc. = {(n_solvente / (n_monomeros_totales + n_solvente)) * 100:.2f}%).")
+print(f"Parámetros fijos: {n_monomeros_totales} monómeros totales y {n_solvente} partículas de solvente (Conc. = {(n_monomeros_totales / (n_monomeros_totales + n_solvente)) * 100:.2f}%).")
 
 # Creamos una carpeta base para esta prueba si no existe
 if not os.path.exists(ruta_base):
