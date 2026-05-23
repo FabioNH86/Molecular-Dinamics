@@ -23,7 +23,7 @@ lista_eps_SP = [0.1, 0.5, 1.0]  # Diferentes afinidades solvente-polímero
 
 # Configuración del polímero y solvente
 monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
-n_monomeros_totales = 120000  # Total de monómeros en el sistema (ajustar según tu simulación)
+n_monomeros_totales = 12000  # Total de monómeros en el sistema (ajustar según tu simulación)
 
 n_solvente = n_monomeros_totales * 99  # Cantidad de partículas puntuales de solvente S
 
@@ -66,6 +66,7 @@ try:
                         temp=temperatura,
                         equilibracion=pasos_equil,
                         muestreo=pasos_muestreo,
+                        n_monomeros_totales=n_monomeros_totales,
                         monomeros_por_polimero=n_monomeros,
                         n_solvente=n_solvente,
                         eps_SP=eps

@@ -1143,7 +1143,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
-def run_polymer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, n_solvente,eps_SP=1.0):
+def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, eps_SP=1.0):
     # --- Identificador para archivos ---
     file_id = f"PolimerSolvente_T{temp:.2f}_epsSP{eps_SP:.2f}"
     
@@ -1152,8 +1152,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, monomeros_por_polimero, n_s
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
 
-    lx, ly, lz = 100.0, 50.0, 50.0
-    n_monomeros_totales = 120000
+    lx, ly, lz = 181.7, 90.85, 90.85
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
     n_total = n_monomeros_totales + n_solvente
