@@ -1152,7 +1152,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
 
-    lx, ly, lz = 181.7, 90.85, 90.85
+    lx, ly, lz = 174.716, 87.358, 87.358  # Ajustado para mantener la densidad deseada
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
     n_total = n_monomeros_totales + n_solvente
