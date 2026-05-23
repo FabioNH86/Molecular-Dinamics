@@ -527,8 +527,8 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
         # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
-        ly_minibox = 40.0
-        lz_minibox = 40.0
+        ly_minibox = 50.0
+        lz_minibox = 50.0
 
         dx = length_minibox / ndiv[0]
         dy = ly_minibox / ndiv[1]
@@ -600,8 +600,8 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         log_filename = f"todo_T{temp:.2f}_rho{rho:.4f}.csv"
         gsd_filename = f"trajectory_T{temp:.2f}_rho{rho:.4f}.gsd"
     else: 
-        log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}.csv")
-        gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}.gsd")
+        log_filename = os.path.join(ruta_destino, f"todo_T{temp:.2f}_long{length_minibox}.csv")
+        gsd_filename = os.path.join(ruta_destino, f"trajectory_T{temp:.2f}_long{length_minibox}.gsd")
 
 
     table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
@@ -638,7 +638,7 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
     sim.run(equilibracion)
     sim.run(muestreo)
 
-    print(f'Simulación finalizada: Rho = {rho}')
+    print(f'Simulación finalizada: Rho = {n_total / (lx * ly * lz):.4f} | L = {lx:.4f} | N = {n_total}')
 
 
 def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):

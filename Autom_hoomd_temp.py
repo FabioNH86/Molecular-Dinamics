@@ -25,13 +25,15 @@ lista_partículas = [
 
 lista_zero_momentum = [100] # Frecuencia de aplicación del zero momentum (en pasos)
 
+longitudes_para_minibox = [40, 45, 50, 60] # Longitud de la caja para la minimización de energía (en unidades reducidas)
+
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_HOOMD_Mie"
 
 # Parámetros de tiempo
 pasos_equil = int(5e5)
 pasos_muestreo = int(1e6)
 
-print(f"Se realizarán un total de {len(lista_partículas)*len(lista_zero_momentum)*len(temperaturas)} simulaciones :)")
+print(f"Se realizarán un total de {len(lista_partículas)*len(lista_zero_momentum)*len(temperaturas)*len(longitudes_para_minibox)} simulaciones :)")
 
 for n in lista_partículas:
     nombre_config = f"N_{n[0]}_{n[1]}_{n[2]}"
@@ -47,16 +49,16 @@ for n in lista_partículas:
             print(f"   - Zero Momentum cada {each} pasos")
 
             for temperatura in temperaturas:
-                print(f"🧪 Ejecutando simulación para ndiv={n} a T={temperatura}...")
-                # Llamamos a la función que usa hoomd
-                run_hoomd_simulation(temp=temperatura, 
-                                    modo='barrido', 
-                                    ruta_destino=ruta_destino, 
-                                    length_minibox=60.0, 
-                                equilibracion=pasos_equil,
-                                muestreo=pasos_muestreo,
-                                ndiv_entrada=n,
-                                periodic_zeromomentum=each)
+                for longitud in longitudes_para_minibox:
+                    print(f"🧪 Ejecutando simulación para ndiv={n} a T={temperatura}...")
+                    # Llamamos a la función que usa hoomd
+                    run_hoomd_simulation(temp=temperatura, 
+                                        modo='barrido', 
+                                        ruta_destino=ruta_destino, 
+                                        length_minibox=longitud,                                     equilibracion=pasos_equil,
+                                        muestreo=pasos_muestreo,
+                                        ndiv_entrada=n,
+                                        periodic_zeromomentum=each)
 
     except Exception as e:
         print(f"❌ Error en la configuración {n}: {e}")
