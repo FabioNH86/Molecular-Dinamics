@@ -1258,8 +1258,8 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     # 2. Configuramos el optimizador FIRE
     fire = hoomd.md.minimize.FIRE(dt=0.0005, 
                                   force_tol=1e-2, 
-                                  ang_tol=1e-2, 
-                                  angmom_tol=1e-5, 
+                                  angmom_tol=1e-2, 
+                                  energy_tol=1e-5, 
                                   methods=[displacement_capped], 
                                   forces=[mie, armonico])
     
