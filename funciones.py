@@ -1213,7 +1213,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
 
     # Fuerza de enlace para mantener la integridad de los polímeros
-    armonico = hoomd.md.bond.Harmonic(nlist=cell)
+    armonico = hoomd.md.bond.Harmonic()
     armonico.params['polymer_bond'] = dict(k=100.0, r0=0.9)
     
 
