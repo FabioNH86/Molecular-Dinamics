@@ -1178,22 +1178,23 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         # Acomodo de las partículas en cadenas lineales
         for i in range(n_polimeros):
             start_idx = i * monomeros_por_polimero
-
-            x_start = 0.0 + (i - (n_polimeros - 1 / 2)) * 1.5  # Separación entre polímeros
-            longitud_cadena = (monomeros_por_polimero - 1) * 0.9  # Asumiendo r0=0.9 para los enlaces
-            y_start = 0.0 - (monomeros_por_polimero - 1) * 0.9 # Centrar la cadena en el eje Y
             
-            z_start = 0.0  # Todas las cadenas en el mismo plano Z
+            # Calculamos el largo estimado para evitar que el polímero spawnee fuera de la caja
+            longitud_cadena = monomeros_por_polimero * 0.9
+            
+            # Generamos coordenadas aleatorias uniformes dentro de los límites de la caja
+            x_start = np.random.uniform(-lx/2 + 0.5, lx/2 - 0.5)
+            y_start = np.random.uniform(-ly/2 + 0.5, ly/2 - longitud_cadena - 0.5) # Espacio para que crezca en Y
+            z_start = np.random.uniform(-lz/2 + 0.5, lz/2 - 0.5)
             
             for j in range(monomeros_por_polimero):
                 idx = start_idx + j
                 snap.particles.position[idx] = [x_start, y_start + j * 0.9, z_start]
                 snap.particles.typeid[idx] = type_P_id
 
-                # Crear enlace con el monómero anterior
                 if j > 0:
                     snap.bonds.group[bond_counter] = [idx - 1, idx]
-                    snap.bonds.typeid[bond_counter] = 0  # 'polymer_bond'
+                    snap.bonds.typeid[bond_counter] = 0
                     bond_counter += 1
         # Solvente
         np.random.seed(42)
