@@ -1260,10 +1260,10 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     maximum_displacement=1e-2)
     
     # 2. Configuramos el optimizador FIRE
-    fire = hoomd.md.minimize.FIRE(dt=0.0005, 
-                                  force_tol=1e-2, 
-                                  angmom_tol=1e-2, 
-                                  energy_tol=1e-5, 
+    fire = hoomd.md.minimize.FIRE(dt=0.0001, 
+                                  force_tol=1e-1, 
+                                  angmom_tol=1e-1, 
+                                  energy_tol=1e-4, 
                                   methods=[displacement_capped], 
                                   forces=[mie, armonico])
     
@@ -1271,8 +1271,8 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     sim.operations.integrator = fire
     
     # Corremos FIRE hasta que converja o alcance un máximo de 800 pasos
-    while not fire.converged and sim.timestep < 800:
-        sim.run(20)
+    while not fire.converged and sim.timestep < 5000:
+        sim.run(50)
         
     print(f"Sistema minimizado en el paso: {sim.timestep}. ¿Convergió?: {fire.converged}")
 
