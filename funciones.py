@@ -1174,18 +1174,25 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         type_P_id = snap.particles.types.index('P')
 
         # Construcción de enlaces para los polímeros
+        # --- Construcción Distribución de Polímeros (Garantiza cero solapamientos) ---
         bond_counter = 0
-        # Acomodo de las partículas en cadenas lineales
+        
+        # Creamos una red de puntos espaciados exclusivamente para colocar los polímeros
+        # Buscamos una distribución tridimensional para las n_polimeros cadenas
+        n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
+        px_coords = np.linspace(-lx/2 + 5.0, lx/2 - 5.0, n_p_eje)
+        py_coords = np.linspace(-ly/2 + 5.0, ly/2 - (monomeros_por_polimero * 0.9) - 5.0, n_p_eje)
+        pz_coords = np.linspace(-lz/2 + 5.0, lz/2 - 5.0, n_p_eje)
+        
+        PX, PY, PZ = np.meshgrid(px_coords, py_coords, pz_coords, indexing='ij')
+        orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
+
+        # Acomodo de las partículas en cadenas lineales bien separadas
         for i in range(n_polimeros):
             start_idx = i * monomeros_por_polimero
             
-            # Calculamos el largo estimado para evitar que el polímero spawnee fuera de la caja
-            longitud_cadena = monomeros_por_polimero * 0.9
-            
-            # Generamos coordenadas aleatorias uniformes dentro de los límites de la caja
-            x_start = np.random.uniform(-lx/2 + 0.5, lx/2 - 0.5)
-            y_start = np.random.uniform(-ly/2 + 0.5, ly/2 - longitud_cadena - 0.5) # Espacio para que crezca en Y
-            z_start = np.random.uniform(-lz/2 + 0.5, lz/2 - 0.5)
+            # En lugar de np.random.uniform, tomamos un origen fijo y seguro de la red de polímeros
+            x_start, y_start, z_start = orígenes_polimeros[i]
             
             for j in range(monomeros_por_polimero):
                 idx = start_idx + j
@@ -1196,7 +1203,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                     snap.bonds.group[bond_counter] = [idx - 1, idx]
                     snap.bonds.typeid[bond_counter] = 0
                     bond_counter += 1
-                    
+
         # Solvente
         # --- Solvente en Red Uniforme (Lattice) ---
         # 1. Calculamos la densidad de número del solvente para estimar el espaciado
