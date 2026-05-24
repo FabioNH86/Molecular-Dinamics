@@ -1196,12 +1196,39 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                     snap.bonds.group[bond_counter] = [idx - 1, idx]
                     snap.bonds.typeid[bond_counter] = 0
                     bond_counter += 1
+                    
         # Solvente
-        np.random.seed(42)
-        pos_solvente = np.random.uniform(low=[-lx/2 + 0.5, -ly/2 + 0.5, -lz/2 + 0.5],
-                                          high=[lx/2 - 0.5, ly/2 - 0.5, lz/2 - 0.5],
-                                          size=(n_solvente, 3))
+        # --- Solvente en Red Uniforme (Lattice) ---
+        # 1. Calculamos la densidad de número del solvente para estimar el espaciado
+        volumen_caja = lx * ly * lz
+        distancia_nodos = (volumen_caja / n_solvente) ** (1/3)
         
+        # 2. Determinamos cuántas partículas caben idealmente en cada eje según las proporciones de tu caja (1000, 500, 500)
+        # Esto nos dará una relación aproximada de 2:1:1 en la cantidad de divisiones
+        nx = int(np.round(lx / distancia_nodos))
+        ny = int(np.round(ly / distancia_nodos))
+        nz = int(np.round(lz / distancia_nodos))
+        
+        # Ajustamos ligeramente para asegurarnos de tener suficientes nodos en la red espacial
+        while (nx * ny * nz) < n_solvente:
+            nx += 1
+            ny += 1
+            nz += 1
+
+        # 3. Generamos las rejillas lineales para cada eje (dejando un margen en las paredes)
+        x_coords = np.linspace(-lx/2 + 0.5, lx/2 - 0.5, nx)
+        y_coords = np.linspace(-ly/2 + 0.5, ly/2 - 0.5, ny)
+        z_coords = np.linspace(-lz/2 + 0.5, lz/2 - 0.5, nz)
+        
+        # 4. Creamos la matriz tridimensional de puntos
+        X, Y, Z = np.meshgrid(x_coords, y_coords, z_coords, indexing='ij')
+        red_completa = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+        
+        # 5. Tomamos exactamente la cantidad de partículas requeridas (n_solvente)
+        # Dado que la densidad es baja, la distancia entre ellas será ~ 7.5 unidades (cero riesgo de overlap)
+        pos_solvente = red_completa[:n_solvente]
+        
+        # Asignamos al snapshot
         snap.particles.position[n_monomeros_totales:] = pos_solvente
         snap.particles.typeid[n_monomeros_totales:] = type_S_id
 
