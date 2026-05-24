@@ -1209,7 +1209,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0)
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
 
     mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
     mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
@@ -1257,7 +1257,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
     displacement_capped = hoomd.md.methods.DisplacementCapped(
     filter=hoomd.filter.All(),
-    maximum_displacement=1e-3)
+    maximum_displacement=1e-2)
     
     # 2. Configuramos el optimizador FIRE
     fire = hoomd.md.minimize.FIRE(dt=0.0005, 
