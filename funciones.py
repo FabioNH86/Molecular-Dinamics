@@ -1152,7 +1152,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
 
-    lx, ly, lz = 1000, 500, 500  # Ajustado para mantener la densidad deseada
+    lx, ly, lz = 251.98, 126, 126  # Ajustado para mantener la densidad deseada
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
     n_total = n_monomeros_totales + n_solvente
@@ -1251,7 +1251,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
-    armonico.params['polymer_bond'] = dict(k=100.0, r0=0.9)
+    armonico.params['P-P'] = dict(k=10.0, r0=1.0)
     
 
     # -- Integrador y termostato del ensamble NVT --
@@ -1278,7 +1278,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(500)])       
+                                          hoomd.trigger.Periodic(5000)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=f"traj_{file_id}.gsd",
@@ -1287,28 +1287,28 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     sim.operations.writers.append(gsd_writer)
     print(f'Densidad: {n_total / (lx * ly * lz):.4f} | Lx = {lx:.4f} | Ly = {ly:.4f} | Lz = {lz:.4f} | N = {n_total}')
 
-    print("--- Relajando el sistema con FIRE para eliminar solapamientos ---")
-    # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
-    displacement_capped = hoomd.md.methods.DisplacementCapped(
-    filter=hoomd.filter.All(),
-    maximum_displacement=1e-2)
+    # print("--- Relajando el sistema con FIRE para eliminar solapamientos ---")
+    # # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
+    # displacement_capped = hoomd.md.methods.DisplacementCapped(
+    # filter=hoomd.filter.All(),
+    # maximum_displacement=1e-2)
     
-    # 2. Configuramos el optimizador FIRE
-    fire = hoomd.md.minimize.FIRE(dt=0.0001, 
-                                  force_tol=1e-1, 
-                                  angmom_tol=1e-1, 
-                                  energy_tol=1e-4, 
-                                  methods=[displacement_capped], 
-                                  forces=[mie, armonico])
+    # # 2. Configuramos el optimizador FIRE
+    # fire = hoomd.md.minimize.FIRE(dt=0.0001, 
+    #                               force_tol=1e-1, 
+    #                               angmom_tol=1e-1, 
+    #                               energy_tol=1e-4, 
+    #                               methods=[displacement_capped], 
+    #                               forces=[mie, armonico])
     
-    # Asignamos FIRE temporalmente a la simulación
-    sim.operations.integrator = fire
+    # # Asignamos FIRE temporalmente a la simulación
+    # sim.operations.integrator = fire
     
-    # Corremos FIRE hasta que converja o alcance un máximo de 800 pasos
-    while not fire.converged and sim.timestep < 5000:
-        sim.run(50)
+    # # Corremos FIRE hasta que converja o alcance un máximo de 800 pasos
+    # while not fire.converged and sim.timestep < 5000:
+    #     sim.run(50)
         
-    print(f"Sistema minimizado en el paso: {sim.timestep}. ¿Convergió?: {fire.converged}")
+    # print(f"Sistema minimizado en el paso: {sim.timestep}. ¿Convergió?: {fire.converged}")
 
     # 3. Quitamos FIRE y restablecemos tu integrador NVT original para la producción
     sim.operations.integrator = integrator

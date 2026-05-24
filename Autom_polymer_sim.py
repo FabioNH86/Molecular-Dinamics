@@ -1,5 +1,4 @@
 import os 
-# Suponiendo que guardaste la función anterior en un archivo llamado 'funciones.py'
 from funciones import run_polymer_hoomd
 
 """
@@ -15,7 +14,7 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 2
+num_prueba = 3
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
