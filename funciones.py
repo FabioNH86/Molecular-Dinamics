@@ -1145,7 +1145,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
 
 def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, eps_SP=1.0):
     # --- Identificador para archivos ---
-    file_id = f"PolimerSolvente_T{temp:.2f}_epsSP{eps_SP:.2f}"
+    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
     
     print(f'>>> Ejecutando: {file_id}...')
     # -- Uso de GPU -- 
@@ -1178,10 +1178,12 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         # Acomodo de las partículas en cadenas lineales
         for i in range(n_polimeros):
             start_idx = i * monomeros_por_polimero
-            end_idx = start_idx + monomeros_por_polimero
-            x_start = -lx/2 + (i + 1) * (lx / (n_polimeros + 1))
-            y_start = -ly/2 + 0.5
-            z_start = -lz/2 + 0.5
+
+            x_start = 0.0 + (i - (n_polimeros - 1 / 2)) * 1.5  # Separación entre polímeros
+            longitud_cadena = (monomeros_por_polimero - 1) * 0.9  # Asumiendo r0=0.9 para los enlaces
+            y_start = 0.0 - (monomeros_por_polimero - 1) * 0.9 # Centrar la cadena en el eje Y
+            
+            z_start = 0.0  # Todas las cadenas en el mismo plano Z
             
             for j in range(monomeros_por_polimero):
                 idx = start_idx + j
