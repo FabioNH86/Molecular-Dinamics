@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import math
 import hoomd
 import gsd.hoomd
-
+from scipy.spatial import cKDTree
 
 
 def calcular_dimensiones_por_densidad(ndiv, densidad_objetivo):
@@ -1155,6 +1155,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     lx, ly, lz = 251.98, 126, 126  # Ajustado para mantener la densidad deseada
 
     padding = 5.0  # Espacio mínimo desde las paredes para evitar solapamientos
+    distancia_minima = 0.9 # Distancia mínima entre partículas para evitar solapamientos
 
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
@@ -1208,6 +1209,9 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                     snap.bonds.typeid[bond_counter] = 0
                     bond_counter += 1
 
+        posiciones_polimeros = np.array([
+            snap.particles.position[i] for i in range(n_monomeros_totales)])
+
         # Solvente
         # --- Solvente en Red Uniforme (Lattice) ---
         # 1. Calculamos la densidad de número del solvente para estimar el espaciado
@@ -1240,7 +1244,21 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         pos_solvente = red_completa[:n_solvente]
         
         # Asignamos al snapshot
-        snap.particles.position[n_monomeros_totales:] = pos_solvente
+        arbol = cKDTree(posiciones_polimeros)
+
+        pos_solvente_filtrada = []
+        for punto in red_completa:
+            dist, _ = arbol.query(punto, k=1)
+            if dist >= distancia_minima:
+                pos_solvente_filtrada.append(punto)
+            if len(pos_solvente_filtrada) == n_solvente:
+                break
+
+        if len(pos_solvente_filtrada) < n_solvente:
+            raise ValueError(f"No hay suficientes puntos libres: solo {len(pos_solvente_filtrada)}")
+
+        snap.particles.position[n_monomeros_totales:] = np.array(pos_solvente_filtrada)
+
         snap.particles.typeid[n_monomeros_totales:] = type_S_id
 
     sim.create_state_from_snapshot(snap)
