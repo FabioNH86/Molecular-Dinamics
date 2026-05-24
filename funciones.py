@@ -1251,6 +1251,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                                  mode='wb') 
     
     sim.operations.writers.append(gsd_writer)
+    print(f'Densidad: {n_total / (lx * ly * lz):.4f} | L = {lx:.4f} | N = {n_total}')
 
     print("--- Relajando el sistema con FIRE para eliminar solapamientos ---")
     # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
