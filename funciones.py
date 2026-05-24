@@ -1153,6 +1153,9 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     sim = hoomd.Simulation(device=device, seed=42)
 
     lx, ly, lz = 251.98, 126, 126  # Ajustado para mantener la densidad deseada
+
+    padding = 5.0  # Espacio mínimo desde las paredes para evitar solapamientos
+
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
     n_total = n_monomeros_totales + n_solvente
@@ -1180,9 +1183,9 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         # Creamos una red de puntos espaciados exclusivamente para colocar los polímeros
         # Buscamos una distribución tridimensional para las n_polimeros cadenas
         n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
-        px_coords = np.linspace(-lx/2 + 5.0, lx/2 - 5.0, n_p_eje)
-        py_coords = np.linspace(-ly/2 + 5.0, ly/2 - (monomeros_por_polimero * 0.9) - 5.0, n_p_eje)
-        pz_coords = np.linspace(-lz/2 + 5.0, lz/2 - 5.0, n_p_eje)
+        px_coords = np.linspace(-lx/2 + padding, lx/2 - padding, n_p_eje)
+        py_coords = np.linspace(-ly/2 + padding, ly/2 - (monomeros_por_polimero * 0.9) - padding, n_p_eje)
+        pz_coords = np.linspace(-lz/2 + padding, lz/2 - padding, n_p_eje)
         
         PX, PY, PZ = np.meshgrid(px_coords, py_coords, pz_coords, indexing='ij')
         orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
@@ -1199,6 +1202,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                 snap.particles.position[idx] = [x_start, y_start + j * 0.9, z_start]
                 snap.particles.typeid[idx] = type_P_id
 
+                # Enlace con el monómero anterior (excepto el primero de cada cadena)
                 if j > 0:
                     snap.bonds.group[bond_counter] = [idx - 1, idx]
                     snap.bonds.typeid[bond_counter] = 0
@@ -1223,9 +1227,9 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
             nz += 1
 
         # 3. Generamos las rejillas lineales para cada eje (dejando un margen en las paredes)
-        x_coords = np.linspace(-lx/2 + 0.5, lx/2 - 0.5, nx)
-        y_coords = np.linspace(-ly/2 + 0.5, ly/2 - 0.5, ny)
-        z_coords = np.linspace(-lz/2 + 0.5, lz/2 - 0.5, nz)
+        x_coords = np.linspace(-lx/2 + padding, lx/2 - padding, nx)
+        y_coords = np.linspace(-ly/2 + padding, ly/2 - padding, ny)
+        z_coords = np.linspace(-lz/2 + padding, lz/2 - padding, nz)
         
         # 4. Creamos la matriz tridimensional de puntos
         X, Y, Z = np.meshgrid(x_coords, y_coords, z_coords, indexing='ij')
