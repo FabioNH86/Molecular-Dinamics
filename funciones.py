@@ -1168,7 +1168,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
 
         # Polímero bond
         snap.bonds.N = n_enlaces
-        snap.bonds.types = ['polymer_bond']
+        snap.bonds.types = ['P-P']
 
         type_S_id = snap.particles.types.index('S')
         type_P_id = snap.particles.types.index('P')
