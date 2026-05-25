@@ -1300,7 +1300,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(5000)])       
+                                          hoomd.trigger.Periodic(50000)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=f"traj_{file_id}.gsd",
