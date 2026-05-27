@@ -14,7 +14,7 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 3
+num_prueba = 4
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
@@ -29,8 +29,8 @@ n_solvente = n_monomeros_totales * 99  # Cantidad de partículas puntuales de so
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 
 # Parámetros de tiempo de simulación
-pasos_equil = int(5e5)
-pasos_muestreo = int(1e6)
+pasos_equil = int(1)
+pasos_muestreo = int(1)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")

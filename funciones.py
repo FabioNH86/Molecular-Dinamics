@@ -1143,18 +1143,21 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
+def is_whole_number(x):
+    return np.isclose(x, np.round(x))
+
+
 def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, densidad_líquido=0.6,eps_SP=1.0):
     # --- Identificador para archivos ---
     file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
     
     print(f'>>> Ejecutando: {file_id}...')
     # -- Uso de GPU -- 
-    device = hoomd.device.GPU()
+    device = hoomd.device.CPU()
     sim = hoomd.Simulation(device=device, seed=42)
 
 
     padding = 5.0  # Espacio mínimo desde las paredes para evitar solapamientos
-    distancia_minima = 0.9 # Distancia mínima entre partículas para evitar solapamientos
 
     n_polimeros = n_monomeros_totales // monomeros_por_polimero
     
@@ -1164,8 +1167,10 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
 
 
     # Para gotícula 
-    parti_x, parti_y, parti_z = n_total ** (1/3), n_total ** (1/3), n_total ** (1/3)
+    parti_x, parti_y, parti_z = round(n_total ** (1/3)), n_total ** (1/3), n_total ** (1/3)
 
+    # Confirmación n_total es entero
+    print(f"parti_x: {parti_x}, parti_y: {is_whole_number(parti_y)}, parti_z: {is_whole_number(parti_z)}")
 
     aspect_ratio = 4.0
     # Dimensiones caja cuadrada 
@@ -1173,11 +1178,12 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     # l = (n_total / densidad_líquido) ** (1/3)
 
     parametro_red = (1/densidad_líquido) ** (1/3)
+    distancia_minima = parametro_red  # Un poco menos que el espaciado ideal para garantizar no solapamientos
 
     lx, ly, lz = parti_x * aspect_ratio, parti_y * parametro_red, parti_z * parametro_red
 
     snap = hoomd.Snapshot()
-    if snap.communicator.rank == 0:
+    if snap.communicator.rank == 1:
         snap.configuration.box = [lx, ly, lz, 0, 0, 0]
         snap.particles.N = n_total
         snap.particles.types = ['S', 'P'] # S para solvente, P para polímero
@@ -1198,8 +1204,8 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         # Buscamos una distribución tridimensional para las n_polimeros cadenas
         n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
         px_coords = np.linspace(-lx/2 + padding, lx/2 - padding, n_p_eje)
-        py_coords = np.linspace(-ly/2 + padding, ly/2 - (monomeros_por_polimero * 0.9) - padding, n_p_eje)
-        pz_coords = np.linspace(-lz/2 + padding, lz/2 - padding, n_p_eje)
+        py_coords = np.linspace(-ly/2, ly/2 - (monomeros_por_polimero * 0.9), n_p_eje)
+        pz_coords = np.linspace(-lz/2, lz/2, n_p_eje)
         
         PX, PY, PZ = np.meshgrid(px_coords, py_coords, pz_coords, indexing='ij')
         orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
@@ -1213,7 +1219,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
             
             for j in range(monomeros_por_polimero):
                 idx = start_idx + j
-                snap.particles.position[idx] = [x_start, y_start + j * 0.9, z_start]
+                snap.particles.position[idx] = [x_start, y_start + j * 1.0, z_start]
                 snap.particles.typeid[idx] = type_P_id
 
                 # Enlace con el monómero anterior (excepto el primero de cada cadena)
@@ -1259,18 +1265,18 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         # Asignamos al snapshot
         arbol = cKDTree(posiciones_polimeros)
 
-        pos_solvente_filtrada = []
-        for punto in red_completa:
-            dist, _ = arbol.query(punto, k=1)
-            if dist >= distancia_minima:
-                pos_solvente_filtrada.append(punto)
-            if len(pos_solvente_filtrada) == n_solvente:
-                break
+        # pos_solvente_filtrada = []
+        # for punto in red_completa:
+        #     dist, _ = arbol.query(punto, k=1)
+        #     if dist >= distancia_minima:
+        #         pos_solvente_filtrada.append(punto)
+        #     if len(pos_solvente_filtrada) == n_solvente:
+        #         break
 
-        if len(pos_solvente_filtrada) < n_solvente:
-            raise ValueError(f"No hay suficientes puntos libres: solo {len(pos_solvente_filtrada)}")
+        # if len(pos_solvente_filtrada) < n_solvente:
+        #     raise ValueError(f"No hay suficientes puntos libres: solo {len(pos_solvente_filtrada)}")
 
-        snap.particles.position[n_monomeros_totales:] = np.array(pos_solvente_filtrada)
+        snap.particles.position[n_monomeros_totales:] = np.array(red_completa[:n_solvente])
 
         snap.particles.typeid[n_monomeros_totales:] = type_S_id
 
@@ -1355,3 +1361,21 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     sim.run(muestreo)
 
     print(f'Simulación finalizada ✅\n >> Condiciones: T={temp}, eps_SP={eps_SP}, Monómeros/Polímero={monomeros_por_polimero}, Concentrción de polímeros={n_polimeros / (lx * ly * lz):.4f}\n')
+
+def generar_conf(densidad_líquido, aspect_ratio, n_particulas):
+    # Se incia con la caja cuadrada 
+    volumen_caja = n_particulas / densidad_líquido
+        
+    # Calculamos la longitud de la caja considerando el aspect ratio
+    l = volumen_caja ** (1/3)
+
+    lx = l
+    ly = l
+    lz = l
+
+    snapshot = hoomd.Snapshot()
+    snapshot.configuration.box = [lx, ly, lz, 0, 0, 0]
+    snapshot.particles.N = n_particulas
+    snapshot.particles.types = ['A']
+
+        
