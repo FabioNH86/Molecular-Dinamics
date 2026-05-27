@@ -1143,7 +1143,7 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
-def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, eps_SP=1.0):
+def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, densidad_líquido=0.6,eps_SP=1.0):
     # --- Identificador para archivos ---
     file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
     
@@ -1152,7 +1152,6 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     device = hoomd.device.GPU()
     sim = hoomd.Simulation(device=device, seed=42)
 
-    lx, ly, lz = 251.98, 126, 126  # Ajustado para mantener la densidad deseada
 
     padding = 5.0  # Espacio mínimo desde las paredes para evitar solapamientos
     distancia_minima = 0.9 # Distancia mínima entre partículas para evitar solapamientos
@@ -1162,6 +1161,20 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     n_total = n_monomeros_totales + n_solvente
 
     n_enlaces = n_polimeros * (monomeros_por_polimero - 1) 
+
+
+    # Para gotícula 
+    parti_x, parti_y, parti_z = n_total ** (1/3), n_total ** (1/3), n_total ** (1/3)
+
+
+    aspect_ratio = 4.0
+    # Dimensiones caja cuadrada 
+    # rho = N / V => V = N / rho => L = (N / rho)^(1/3)
+    # l = (n_total / densidad_líquido) ** (1/3)
+
+    parametro_red = (1/densidad_líquido) ** (1/3)
+
+    lx, ly, lz = parti_x * aspect_ratio, parti_y * parametro_red, parti_z * parametro_red
 
     snap = hoomd.Snapshot()
     if snap.communicator.rank == 0:
@@ -1220,7 +1233,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
         
         # 2. Determinamos cuántas partículas caben idealmente en cada eje según las proporciones de tu caja (1000, 500, 500)
         # Esto nos dará una relación aproximada de 2:1:1 en la cantidad de divisiones
-        nx = int(np.round(lx / distancia_nodos))
+        nx = int(np.round(ly / distancia_nodos))
         ny = int(np.round(ly / distancia_nodos))
         nz = int(np.round(lz / distancia_nodos))
         
@@ -1231,7 +1244,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
             nz += 1
 
         # 3. Generamos las rejillas lineales para cada eje (dejando un margen en las paredes)
-        x_coords = np.linspace(-lx/2 + padding, lx/2 - padding, nx)
+        x_coords = np.linspace(-(1/8) * lx, (1/8) * lx, nx)
         y_coords = np.linspace(-ly/2 + padding, ly/2 - padding, ny)
         z_coords = np.linspace(-lz/2 + padding, lz/2 - padding, nz)
         
