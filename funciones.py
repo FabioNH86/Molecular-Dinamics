@@ -8,6 +8,8 @@ import hoomd
 import gsd.hoomd
 from scipy.spatial import cKDTree
 
+# from hoomd import deprecated
+
 
 def calcular_dimensiones_por_densidad(ndiv, densidad_objetivo):
     """
@@ -1143,40 +1145,40 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
-def is_whole_number(x):
-    return np.isclose(x, np.round(x))
-
-
-def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
+def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
+    snap = hoomd.Snapshot()
+    snap.configuration.step = 1
 
     # Calculamos cuántos monómeros y polímeros necesitamos
     n_solvente_aprox      = int(((100/concentracion_porcentual_monomeros) - 1) * n_monomeros)
     n_total               = n_solvente_aprox + n_monomeros  
     n_polimeros           = n_monomeros // monomeros_en_polimero
-    n_solvente            = n_total - n_monomeros
     n_enlaces             = n_polimeros * (monomeros_en_polimero - 1) 
+    n_monomeros_reales    = n_polimeros * monomeros_en_polimero
+    monomeros_remanentes  = n_monomeros - n_monomeros_reales
+    n_solvente            = n_total - n_monomeros_reales
 
     print(f"Cantidad monomeros: {n_monomeros}")
     print(f"Cantidad part. solvente: {n_solvente}")
     print(f"Concentración {(n_monomeros / n_total * 100):.2f}")
    
-
     # Comenzamos con una caja cúbica en el centro del sistema
-    volumen_caja = n_total / densidad_goticula
-    L = volumen_caja ** (1/3)
+    volumen_gotícula = n_total / densidad_goticula
 
-    print(f"El volumen de la caja es: {volumen_caja:.2f}")
+    print(f"El volumen de la caja es: {volumen_gotícula:.2f}")
 
     # Parámetro de red 
     # El espaciado entre partículas es el parámetro de red
-    parametro_red = (1 / densidad_goticula) ** (1/3)
+    parametro_red = (1 / densidad_goticula) ** (1/3) 
+
+    L = volumen_gotícula ** (1/3)
 
     print(f"El parametro de red es: {parametro_red:.2f}")
     
-    lx, ly, lz = aspect_ratio * L, L, L
+    lx, ly, lz = L, L, L
 
-    snap = hoomd.Snapshot()
-    snap.configuration.box = [lx, ly, lz, 0, 0, 0]
+    snap.configuration.box = [lx*aspect_ratio, ly, lz, 0, 0, 0] # Se genera la caja alargada
+
     snap.particles.N = n_total
     snap.particles.types = ['S', 'P'] # Solvente, Polímero
     snap.particles.mass[:] = [1.0] * n_total
@@ -1188,68 +1190,99 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
     partic_Solvente = snap.particles.types.index('S')
 
 
-    # Acomodo de polímeros
-    n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
+    # Cuntas partículas caben a lo largo de los lados
+    n_p_yz = int(np.round(L / parametro_red))
+    offset_yz = (L - (n_p_yz - 1) * parametro_red) / 2
+    coords_yz = np.linspace(-L/2 + offset_yz, L/2 - offset_yz, num=n_p_yz)
 
-    longitud_cadena = (monomeros_en_polimero - 1) * parametro_red
+    sitios_por_plano = n_p_yz * n_p_yz
+    n_p_x_necesarios = int(np.ceil(n_total / sitios_por_plano))
 
-    coords_x = np.linspace(-L/2 + parametro_red, L/2 - longitud_cadena, num=n_p_eje)
-    coords_yz = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_p_eje)
-    
+    # Nos aseguramos de que el eje X sea lo suficientemente largo para el polímero actual
+    n_p_x = max(n_p_x_necesarios, monomeros_en_polimero)
+
+    # En X le damos a la gotícula un margen extra basado en el polímero más largo,
+    # pero asegurándonos de que siga siendo más pequeña que la caja total (lx * aspect_ratio)
+    # Elegimos el valor máximo entre el tamaño estándar L o la longitud del polímero
+    L_goticula_x = (n_p_x - 1) * parametro_red
+
+    # Validamos que la gotícula en X no supere los límites físicos de la caja alargada de HOOMD
+    if L_goticula_x > (lx * aspect_ratio):
+        L_goticula_x = lx * aspect_ratio - (2 * parametro_red)
+
+    n_p_x = int(np.round(L_goticula_x / parametro_red)) * int(parametro_red * 2)
+    offset_x = (L_goticula_x - (n_p_x - 1) * parametro_red) / 2
+    coords_x = np.linspace(-L_goticula_x/2, L_goticula_x/2, num=n_p_x)
+
     # Generamos la matriz 3D  
-    PX, PY, PZ = np.meshgrid(coords_x, coords_yz, coords_yz, indexing='ij')
-    orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
+    PX, PY, PZ = np.meshgrid(coords_x, coords_yz, coords_yz, indexing='xy')
+    todos_los_sitios = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
+
+
+    
+    if n_p_x < monomeros_en_polimero:
+        raise RuntimeError(
+            f"El tamaño del eje X ({n_p_x} sitios) sigue siendo menor que el polímero ({monomeros_en_polimero}). "
+            "Considera aumentar el aspect_ratio o el volumen inicial del sistema."
+        )
+
+    ocupado = np.zeros(len(todos_los_sitios), dtype=bool)
 
     # Iniciamos un contador de los enlaces entre monomeros
     bond_counter = 0
+    sitio_siguiente = 0
 
     # Acomodamos las partículas de polímeros en cadenas lineales
     for i in range(n_polimeros):
         start_i_monomer = i * monomeros_en_polimero # Buscamos cada inicio de polímero
 
-        # Sacamos las coordenadas del inicio de cada polímero 
-        start_x, start_y, start_z = orígenes_polimeros[i] 
+        # Si el polímero actual no cabe en los sitios que quedan de la fila X actual,
+        # saltamos al inicio de la siguiente fila de la gotícula central
+        while (sitio_siguiente % n_p_x) + monomeros_en_polimero > n_p_x:
+            sitio_siguiente += (n_p_x - (sitio_siguiente % n_p_x))
 
-        # Recorremos el eje y
-        for j in range(monomeros_en_polimero):
-            each_monomer = start_i_monomer + j
-            snap.particles.position[each_monomer] = [start_x + j * parametro_red, start_y, start_z]
-            snap.particles.typeid[each_monomer] = partic_Polimero
+        colocados = 0
+        while colocados < monomeros_en_polimero:
+            if sitio_siguiente >= len(todos_los_sitios):
+                raise RuntimeError("Sin sitios libres para el polímero")
+            
+            if not ocupado[sitio_siguiente]:
+                idx_particula = start_i_monomer + colocados
+                snap.particles.position[idx_particula] = todos_los_sitios[sitio_siguiente]
+                snap.particles.typeid[idx_particula] = partic_Polimero
+                ocupado[sitio_siguiente] = True
 
-            # Enlazamos con el monomero anterior (excepto el primero)
-            if j > 0:
-                snap.bonds.group[bond_counter] = [each_monomer -1, each_monomer]
-                snap.bonds.typeid[bond_counter]= 0
-                bond_counter += 1
+                if colocados > 0:
+                    snap.bonds.group[bond_counter] = [idx_particula -1, idx_particula]
+                    snap.bonds.typeid[bond_counter] = 0
+                    bond_counter += 1
+                
+                colocados += 1
 
-    # Grid para todo el sistema
-    n_eje_total = int(np.ceil(n_total ** (1/3)))
-    coords_grid = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_eje_total)
-    GX, GY, GZ = np.meshgrid(coords_grid, coords_grid, coords_grid, indexing='ij')
-    todos_los_sitios = np.vstack([GX.ravel(), GY.ravel(), GZ.ravel()]).T
+            sitio_siguiente += 1
 
-    # Set de posiciones ocupadas por polímero
-    sitios_polimero = set(
-        tuple(np.round(snap.particles.position[i], 6))
-        for i in range(n_monomeros)
-    )
 
-    # Sitios libres para el solvente
-    sitios_libres = [
-        sitio for sitio in todos_los_sitios
-        if tuple(np.round(sitio, 6)) not in sitios_polimero
-    ]
+    sitios_libres = np.where(~ocupado)[0]
 
-    for i in range(n_solvente):
-        idx = n_monomeros + i
-        snap.particles.position[idx] = sitios_libres[i]
+    if len(sitios_libres) < n_solvente:
+        raise RuntimeError(
+            f"Sin sitios para solvente: {len(sitios_libres)} libres, {n_solvente} necesarios"
+        )
+    
+    for s in range(n_solvente):
+        idx = n_monomeros_reales + s
+        snap.particles.position[idx] = todos_los_sitios[sitios_libres[s]]
         snap.particles.typeid[idx] = partic_Solvente
+        
+    print(f"Frame creado: {n_polimeros} polímeros, {n_solvente} solvente")
 
+  
     return snap
 
-def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0, aspect_ratio_final=4.0):
+
+def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0):
     # --- Identificador para archivos ---
-    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
+    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}_mon"
 
     # Inicializar HOOMD con el snapshot
     gpu = hoomd.device.GPU()
@@ -1293,8 +1326,9 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0, aspec
     sim.operations.writers.append(table)
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
-    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(20)])       
+    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
+                                          hoomd.trigger.On(1),
+                                          hoomd.trigger.Periodic(2)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=f"traj_{file_id}.gsd",
@@ -1302,21 +1336,11 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0, aspec
     
     sim.operations.writers.append(gsd_writer)
 
-    sim.operations.integrator = integrator
-    
-    # Resetear el contador de pasos 
+    # Grabamos el primer Frame 
+    gsd_writer.write(sim.state, filename=f"traj_{file_id}.gsd")
 
     sim.run(equilibracion)
 
 
-    # --- Estiramiento del box ---
-    box_inicial = hoomd.Box.from_box(sim.state.box)
-    
-    box_estirada = hoomd.Box(
-        Lx=box_inicial.Lx * aspect_ratio_final,
-        Ly=box_inicial.Ly,
-        Lz=box_inicial.Lz
-    )
-    
-    hoomd.update.BoxResize.update(sim.state, box_estirada)
     sim.run(muestreo)
+
