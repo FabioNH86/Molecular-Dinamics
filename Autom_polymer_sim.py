@@ -1,5 +1,5 @@
 import os 
-from funciones import run_polymer_hoomd
+from funciones import crear_snapshot, correr_simulacion
 
 """
 Este código se encarga de automatizar una serie de simulaciones de dinámica molecular
@@ -61,15 +61,17 @@ try:
                 os.chdir(os.path.join(directorio_original, ruta_base))
                 try:
                     # Llamamos a la función híbrida
-                    run_polymer_hoomd(
-                        temp=temperatura,
-                        equilibracion=pasos_equil,
-                        muestreo=pasos_muestreo,
-                        n_monomeros_totales=n_monomeros_totales,
-                        monomeros_por_polimero=n_monomeros,
-                        n_solvente=n_solvente,
-                        eps_SP=eps
-                    )
+                    snapshot = crear_snapshot(densidad_goticula=0.3,
+                                   aspect_ratio=1,
+                                   concentracion_porcentual_monomeros=1.0,
+                                   n_monomeros=12000)
+                    correr_simulacion(snapshot=snapshot, temp=temperatura,
+                                      equilibracion=pasos_equil, 
+                                      muestreo=pasos_muestreo,
+                                      eps_SP=eps,
+                                      aspect_ratio_final=4.0)
+                    
+
                 except Exception as e:
                     print(f"  ❌ Error ejecutando T={temperatura}, eps_SP={eps}: {e}")
                 finally:

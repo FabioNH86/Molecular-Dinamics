@@ -1147,140 +1147,122 @@ def is_whole_number(x):
     return np.isclose(x, np.round(x))
 
 
-def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monomeros_por_polimero, n_solvente, densidad_líquido=0.6,eps_SP=1.0):
-    # --- Identificador para archivos ---
-    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
+def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
+
+    # Calculamos cuántos monómeros y polímeros necesitamos
+    n_solvente_aprox      = int(((100/concentracion_porcentual_monomeros) - 1) * n_monomeros)
+    n_total               = n_solvente_aprox + n_monomeros
+    n_polimeros           = n_monomeros // monomeros_en_polimero
+    n_solvente            = n_total - n_monomeros
+    n_enlaces             = n_polimeros * (monomeros_en_polimero - 1) 
+
+    print(f"Cantidad monomeros: {n_monomeros}")
+    print(f"Cantidad part. solvente: {n_solvente}")
+    print(f"Concentración {(n_monomeros / n_total * 100):.2f}")
+   
+
+    # Comenzamos con una caja cúbica en el centro del sistema
+    volumen_caja = n_total / densidad_goticula
+    L = volumen_caja ** (1/3)
+
+    print(f"El volumen de la caja es: {volumen_caja:.2f}")
+
+    # Parámetro de red 
+    # El espaciado entre partículas es el parámetro de red
+    parametro_red = (1 / densidad_goticula) ** (1/3)
+
+    print(f"El parametro de red es: {parametro_red:.2f}")
     
-    print(f'>>> Ejecutando: {file_id}...')
-    # -- Uso de GPU -- 
-    device = hoomd.device.CPU()
-    sim = hoomd.Simulation(device=device, seed=42)
-
-
-    padding = 5.0  # Espacio mínimo desde las paredes para evitar solapamientos
-
-    n_polimeros = n_monomeros_totales // monomeros_por_polimero
-    
-    n_total = n_monomeros_totales + n_solvente
-
-    n_enlaces = n_polimeros * (monomeros_por_polimero - 1) 
-
-
-    # Para gotícula 
-    parti_x, parti_y, parti_z = round(n_total ** (1/3)), n_total ** (1/3), n_total ** (1/3)
-
-    # Confirmación n_total es entero
-    print(f"parti_x: {parti_x}, parti_y: {is_whole_number(parti_y)}, parti_z: {is_whole_number(parti_z)}")
-
-    aspect_ratio = 4.0
-    # Dimensiones caja cuadrada 
-    # rho = N / V => V = N / rho => L = (N / rho)^(1/3)
-    # l = (n_total / densidad_líquido) ** (1/3)
-
-    parametro_red = (1/densidad_líquido) ** (1/3)
-    distancia_minima = parametro_red  # Un poco menos que el espaciado ideal para garantizar no solapamientos
-
-    lx, ly, lz = parti_x * aspect_ratio, parti_y * parametro_red, parti_z * parametro_red
+    lx, ly, lz = aspect_ratio * L, L, L
 
     snap = hoomd.Snapshot()
-    if snap.communicator.rank == 1:
-        snap.configuration.box = [lx, ly, lz, 0, 0, 0]
-        snap.particles.N = n_total
-        snap.particles.types = ['S', 'P'] # S para solvente, P para polímero
-        snap.particles.mass[:] = [1.0] * n_total
+    snap.configuration.box = [lx, ly, lz, 0, 0, 0]
+    snap.particles.N = n_total
+    snap.particles.types = ['S', 'P'] # Solvente, Polímero
+    snap.particles.mass[:] = [1.0] * n_total
+    # Polímero bond
+    snap.bonds.N = n_enlaces
+    snap.bonds.types = ['P-P']
 
-        # Polímero bond
-        snap.bonds.N = n_enlaces
-        snap.bonds.types = ['P-P']
+    partic_Polimero = snap.particles.types.index('P')
+    partic_Solvente = snap.particles.types.index('S')
 
-        type_S_id = snap.particles.types.index('S')
-        type_P_id = snap.particles.types.index('P')
 
-        # Construcción de enlaces para los polímeros
-        # --- Construcción Distribución de Polímeros (Garantiza cero solapamientos) ---
-        bond_counter = 0
-        
-        # Creamos una red de puntos espaciados exclusivamente para colocar los polímeros
-        # Buscamos una distribución tridimensional para las n_polimeros cadenas
-        n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
-        px_coords = np.linspace(-lx/2 + padding, lx/2 - padding, n_p_eje)
-        py_coords = np.linspace(-ly/2, ly/2 - (monomeros_por_polimero * 0.9), n_p_eje)
-        pz_coords = np.linspace(-lz/2, lz/2, n_p_eje)
-        
-        PX, PY, PZ = np.meshgrid(px_coords, py_coords, pz_coords, indexing='ij')
-        orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
+    # Acomodo de polímeros
+    n_p_eje = int(np.ceil(n_polimeros ** (1/3)))
 
-        # Acomodo de las partículas en cadenas lineales bien separadas
-        for i in range(n_polimeros):
-            start_idx = i * monomeros_por_polimero
-            
-            # En lugar de np.random.uniform, tomamos un origen fijo y seguro de la red de polímeros
-            x_start, y_start, z_start = orígenes_polimeros[i]
-            
-            for j in range(monomeros_por_polimero):
-                idx = start_idx + j
-                snap.particles.position[idx] = [x_start, y_start + j * 1.0, z_start]
-                snap.particles.typeid[idx] = type_P_id
+    longitud_cadena = (monomeros_en_polimero - 1) * parametro_red
 
-                # Enlace con el monómero anterior (excepto el primero de cada cadena)
-                if j > 0:
-                    snap.bonds.group[bond_counter] = [idx - 1, idx]
-                    snap.bonds.typeid[bond_counter] = 0
-                    bond_counter += 1
+    coords_x = np.linspace(-L/2 + parametro_red, L/2 - longitud_cadena, num=n_p_eje)
+    coords_yz = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_p_eje)
+    
+    # Generamos la matriz 3D  
+    PX, PY, PZ = np.meshgrid(coords_x, coords_yz, coords_yz, indexing='ij')
+    orígenes_polimeros = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
+
+    # Iniciamos un contador de los enlaces entre monomeros
+    bond_counter = 0
+
+    # Acomodamos las partículas de polímeros en cadenas lineales
+    for i in range(n_polimeros):
+        start_i_monomer = i * monomeros_en_polimero # Buscamos cada inicio de polímero
+
+        # Sacamos las coordenadas del inicio de cada polímero 
+        start_x, start_y, start_z = orígenes_polimeros[i] 
+
+        # Recorremos el eje y
+        for j in range(monomeros_en_polimero):
+            each_monomer = start_i_monomer + j
+            snap.particles.position[each_monomer] = [start_x + j, start_y, start_z]
+            snap.particles.typeid[each_monomer] = partic_Polimero
+
+            # Enlazamos con el monomero anterior (excepto el primero)
+            if j > 0:
+                snap.bonds.group[bond_counter] = [each_monomer -1, each_monomer]
+                snap.bonds.typeid[bond_counter]= 0
+                bond_counter += 1
 
         posiciones_polimeros = np.array([
-            snap.particles.position[i] for i in range(n_monomeros_totales)])
+            snap.particles.position[i] for i in range(n_monomeros)])
 
-        # Solvente
-        # --- Solvente en Red Uniforme (Lattice) ---
-        # 1. Calculamos la densidad de número del solvente para estimar el espaciado
-        volumen_caja = lx * ly * lz
-        distancia_nodos = (volumen_caja / n_solvente) ** (1/3)
-        
-        # 2. Determinamos cuántas partículas caben idealmente en cada eje según las proporciones de tu caja (1000, 500, 500)
-        # Esto nos dará una relación aproximada de 2:1:1 en la cantidad de divisiones
-        nx = int(np.round(ly / distancia_nodos))
-        ny = int(np.round(ly / distancia_nodos))
-        nz = int(np.round(lz / distancia_nodos))
-        
-        # Ajustamos ligeramente para asegurarnos de tener suficientes nodos en la red espacial
-        while (nx * ny * nz) < n_solvente:
-            nx += 1
-            ny += 1
-            nz += 1
 
-        # 3. Generamos las rejillas lineales para cada eje (dejando un margen en las paredes)
-        x_coords = np.linspace(-(1/8) * lx, (1/8) * lx, nx)
-        y_coords = np.linspace(-ly/2 + padding, ly/2 - padding, ny)
-        z_coords = np.linspace(-lz/2 + padding, lz/2 - padding, nz)
-        
-        # 4. Creamos la matriz tridimensional de puntos
-        X, Y, Z = np.meshgrid(x_coords, y_coords, z_coords, indexing='ij')
-        red_completa = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
-        
-        # 5. Tomamos exactamente la cantidad de partículas requeridas (n_solvente)
-        # Dado que la densidad es baja, la distancia entre ellas será ~ 7.5 unidades (cero riesgo de overlap)
-        pos_solvente = red_completa[:n_solvente]
-        
-        # Asignamos al snapshot
-        arbol = cKDTree(posiciones_polimeros)
 
-        # pos_solvente_filtrada = []
-        # for punto in red_completa:
-        #     dist, _ = arbol.query(punto, k=1)
-        #     if dist >= distancia_minima:
-        #         pos_solvente_filtrada.append(punto)
-        #     if len(pos_solvente_filtrada) == n_solvente:
-        #         break
 
-        # if len(pos_solvente_filtrada) < n_solvente:
-        #     raise ValueError(f"No hay suficientes puntos libres: solo {len(pos_solvente_filtrada)}")
+    # Grid para todo el sistema
+    n_eje_total = int(np.ceil(n_total ** (1/3)))
+    coords_grid = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_eje_total)
+    GX, GY, GZ = np.meshgrid(coords_grid, coords_grid, coords_grid, indexing='ij')
+    todos_los_sitios = np.vstack([GX.ravel(), GY.ravel(), GZ.ravel()]).T
 
-        snap.particles.position[n_monomeros_totales:] = np.array(red_completa[:n_solvente])
+    # Set de posiciones ocupadas por polímero
+    sitios_polimero = set(
+        tuple(np.round(snap.particles.position[i], 6))
+        for i in range(n_monomeros)
+    )
 
-        snap.particles.typeid[n_monomeros_totales:] = type_S_id
+    # Sitios libres para el solvente
+    sitios_libres = [
+        sitio for sitio in todos_los_sitios
+        if tuple(np.round(sitio, 6)) not in sitios_polimero
+    ]
 
-    sim.create_state_from_snapshot(snap)
+    for i in range(n_solvente):
+        idx = n_monomeros + i
+        snap.particles.position[idx] = sitios_libres[i]
+        snap.particles.typeid[idx] = partic_Solvente
+
+    return snap
+
+def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0, aspect_ratio_final=4.0):
+    # --- Identificador para archivos ---
+    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
+
+    # Inicializar HOOMD con el snapshot
+    gpu = hoomd.device.GPU()
+    sim = hoomd.Simulation(device=gpu, seed=42)
+    sim.create_state_from_snapshot(snapshot)
+    
+    sim.create_state_from_snapshot(snapshot)
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
@@ -1300,7 +1282,7 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
 
 
-    integrator = hoomd.md.Integrator(dt=0.001, methods=[nvt], forces=[mie, armonico])
+    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[mie, armonico])
     sim.operations.integrator = integrator
 
     # -- Loggers (Muestra de la información) --
@@ -1326,56 +1308,22 @@ def run_polymer_hoomd(temp, equilibracion, muestreo, n_monomeros_totales, monome
                                  mode='wb') 
     
     sim.operations.writers.append(gsd_writer)
-    print(f'Densidad: {n_total / (lx * ly * lz):.4f} | Lx = {lx:.4f} | Ly = {ly:.4f} | Lz = {lz:.4f} | N = {n_total}')
 
-    # print("--- Relajando el sistema con FIRE para eliminar solapamientos ---")
-    # # 1. Creamos un método de velocidad nula para la minimización (un "cojín" para que no salgan disparadas)
-    # displacement_capped = hoomd.md.methods.DisplacementCapped(
-    # filter=hoomd.filter.All(),
-    # maximum_displacement=1e-2)
-    
-    # # 2. Configuramos el optimizador FIRE
-    # fire = hoomd.md.minimize.FIRE(dt=0.0001, 
-    #                               force_tol=1e-1, 
-    #                               angmom_tol=1e-1, 
-    #                               energy_tol=1e-4, 
-    #                               methods=[displacement_capped], 
-    #                               forces=[mie, armonico])
-    
-    # # Asignamos FIRE temporalmente a la simulación
-    # sim.operations.integrator = fire
-    
-    # # Corremos FIRE hasta que converja o alcance un máximo de 800 pasos
-    # while not fire.converged and sim.timestep < 5000:
-    #     sim.run(50)
-        
-    # print(f"Sistema minimizado en el paso: {sim.timestep}. ¿Convergió?: {fire.converged}")
-
-    # 3. Quitamos FIRE y restablecemos tu integrador NVT original para la producción
     sim.operations.integrator = integrator
     
     # Resetear el contador de pasos 
 
-    # --- AHORA SÍ, CORRES TUS ETAPAS ORIGINALES ---
     sim.run(equilibracion)
+
+
+    # --- Estiramiento del box ---
+    box_inicial = hoomd.Box.from_box(sim.state.box)
+    
+    box_estirada = hoomd.Box(
+        Lx=box_inicial.Lx * aspect_ratio_final,
+        Ly=box_inicial.Ly,
+        Lz=box_inicial.Lz
+    )
+    
+    hoomd.update.BoxResize.update(sim.state, box_estirada)
     sim.run(muestreo)
-
-    print(f'Simulación finalizada ✅\n >> Condiciones: T={temp}, eps_SP={eps_SP}, Monómeros/Polímero={monomeros_por_polimero}, Concentrción de polímeros={n_polimeros / (lx * ly * lz):.4f}\n')
-
-def generar_conf(densidad_líquido, aspect_ratio, n_particulas):
-    # Se incia con la caja cuadrada 
-    volumen_caja = n_particulas / densidad_líquido
-        
-    # Calculamos la longitud de la caja considerando el aspect ratio
-    l = volumen_caja ** (1/3)
-
-    lx = l
-    ly = l
-    lz = l
-
-    snapshot = hoomd.Snapshot()
-    snapshot.configuration.box = [lx, ly, lz, 0, 0, 0]
-    snapshot.particles.N = n_particulas
-    snapshot.particles.types = ['A']
-
-        
