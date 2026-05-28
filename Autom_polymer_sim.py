@@ -14,7 +14,7 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 4
+num_prueba = 6
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
