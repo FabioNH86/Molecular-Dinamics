@@ -29,8 +29,8 @@ n_solvente = n_monomeros_totales * 99  # Cantidad de partículas puntuales de so
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 
 # Parámetros de tiempo de simulación
-pasos_equil = int(1)
-pasos_muestreo = int(1)
+pasos_equil = int(100)
+pasos_muestreo = int(100)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")
