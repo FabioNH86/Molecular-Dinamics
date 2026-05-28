@@ -1193,8 +1193,8 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
 
     longitud_cadena = (monomeros_en_polimero - 1) * parametro_red
 
-    coords_x = np.linspace(-L/2 - parametro_red, L/2 + longitud_cadena, num=n_p_eje)
-    coords_yz = np.linspace(-L/2 - parametro_red, L/2 + parametro_red, num=n_p_eje)
+    coords_x = np.linspace(-L/2 + parametro_red, L/2 - longitud_cadena, num=n_p_eje)
+    coords_yz = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_p_eje)
     
     # Generamos la matriz 3D  
     PX, PY, PZ = np.meshgrid(coords_x, coords_yz, coords_yz, indexing='ij')
@@ -1230,7 +1230,7 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
 
     # Grid para todo el sistema
     n_eje_total = int(np.ceil(n_total ** (1/3)))
-    coords_grid = np.linspace(-L/2 - parametro_red, L/2 + parametro_red, num=n_eje_total)
+    coords_grid = np.linspace(-L/2 + parametro_red, L/2 - parametro_red, num=n_eje_total)
     GX, GY, GZ = np.meshgrid(coords_grid, coords_grid, coords_grid, indexing='ij')
     todos_los_sitios = np.vstack([GX.ravel(), GY.ravel(), GZ.ravel()]).T
 
