@@ -1151,7 +1151,7 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
 
     # Calculamos cuántos monómeros y polímeros necesitamos
     n_solvente_aprox      = int(((100/concentracion_porcentual_monomeros) - 1) * n_monomeros)
-    n_total               = n_solvente_aprox + n_monomeros
+    n_total               = n_solvente_aprox + n_monomeros  
     n_polimeros           = n_monomeros // monomeros_en_polimero
     n_solvente            = n_total - n_monomeros
     n_enlaces             = n_polimeros * (monomeros_en_polimero - 1) 
@@ -1213,7 +1213,7 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
         # Recorremos el eje y
         for j in range(monomeros_en_polimero):
             each_monomer = start_i_monomer + j
-            snap.particles.position[each_monomer] = [start_x + j, start_y, start_z]
+            snap.particles.position[each_monomer] = [start_x + j * parametro_red, start_y, start_z]
             snap.particles.typeid[each_monomer] = partic_Polimero
 
             # Enlazamos con el monomero anterior (excepto el primero)
@@ -1221,12 +1221,6 @@ def crear_snapshot(densidad_goticula, aspect_ratio, concentracion_porcentual_mon
                 snap.bonds.group[bond_counter] = [each_monomer -1, each_monomer]
                 snap.bonds.typeid[bond_counter]= 0
                 bond_counter += 1
-
-        posiciones_polimeros = np.array([
-            snap.particles.position[i] for i in range(n_monomeros)])
-
-
-
 
     # Grid para todo el sistema
     n_eje_total = int(np.ceil(n_total ** (1/3)))
