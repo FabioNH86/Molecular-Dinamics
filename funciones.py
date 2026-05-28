@@ -1262,7 +1262,6 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0, aspec
     sim = hoomd.Simulation(device=gpu, seed=42)
     sim.create_state_from_snapshot(snapshot)
     
-    sim.create_state_from_snapshot(snapshot)
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
