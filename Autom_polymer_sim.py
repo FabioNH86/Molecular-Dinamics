@@ -64,7 +64,8 @@ try:
                     snapshot = crear_snapshot(densidad_goticula=0.3,
                                    aspect_ratio=1,
                                    concentracion_porcentual_monomeros=1.0,
-                                   n_monomeros=12000)
+                                   n_monomeros=12000,
+                                   monomeros_en_polimero=8)
                     correr_simulacion(snapshot=snapshot, temp=temperatura,
                                       equilibracion=pasos_equil, 
                                       muestreo=pasos_muestreo,
