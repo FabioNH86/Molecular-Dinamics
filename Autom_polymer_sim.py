@@ -22,7 +22,7 @@ lista_eps_SP = [0.1, 1.0]  # Diferentes afinidades solvente-polímero
 
 # Configuración del polímero y solvente
 monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
-n_monomeros_totales = 120000  # Total de monómeros en el sistema (ajustar según tu simulación)
+n_monomeros_totales = 12000  # Total de monómeros en el sistema (ajustar según tu simulación)
 
 
 
