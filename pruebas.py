@@ -36,10 +36,10 @@ print(f"¡Archivo inicial {nombre_archivo_ini} creado con éxito!")
 
     # --- TEST 2: Pasar el snapshot a HOOMD y correr la simulación ---
     # Usamos pasos cortos (200) para validar que el integrador y los potenciales no rompan.
-# correr_simulacion(
-#         snapshot=snapshot,
-#         temp=1.2,
-#         equilibracion=20,
-#         muestreo=20,
-#         eps_SP=1.0
-#     )
+correr_simulacion(
+        snapshot=snapshot,
+        temp=1.2,
+        equilibracion=20,
+        muestreo=20,
+        eps_SP=1.0
+    )

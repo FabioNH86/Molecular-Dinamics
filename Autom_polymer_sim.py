@@ -14,7 +14,7 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 7
+num_prueba = 8
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
@@ -22,19 +22,18 @@ lista_eps_SP = [0.1, 1.0]  # Diferentes afinidades solvente-polímero
 
 # Configuración del polímero y solvente
 monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
-n_monomeros_totales = 12  # Total de monómeros en el sistema (ajustar según tu simulación)
+n_monomeros_totales = 100  # Total de monómeros en el sistema (ajustar según tu simulación)
 
-n_solvente = n_monomeros_totales * 99  # Cantidad de partículas puntuales de solvente S
+
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 
 # Parámetros de tiempo de simulación
-pasos_equil = int(100)
-pasos_muestreo = int(100)
+pasos_equil = int(5e5)
+pasos_muestreo = int(1e6)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")
-print(f"Parámetros fijos: {n_monomeros_totales} monómeros totales y {n_solvente} partículas de solvente (Conc. = {(n_monomeros_totales / (n_monomeros_totales + n_solvente)) * 100:.2f}%).")
 
 # Creamos una carpeta base para esta prueba si no existe
 if not os.path.exists(ruta_base):
@@ -71,7 +70,10 @@ try:
                                       temp=temperatura,
                                       equilibracion=pasos_equil, 
                                       muestreo=pasos_muestreo,
-                                      eps_SP=eps)
+                                      eps_SP=eps,
+                                      mon_cadena=n_monomeros)
+                
+                    print('=========== Nueva simulación ============= \n')
                     
 
                 except Exception as e:

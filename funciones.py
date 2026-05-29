@@ -1155,7 +1155,6 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     n_polimeros           = n_monomeros // monomeros_en_polimero
     n_enlaces             = n_polimeros * (monomeros_en_polimero - 1) 
     n_monomeros_reales    = n_polimeros * monomeros_en_polimero
-    monomeros_remanentes  = n_monomeros - n_monomeros_reales
     n_solvente            = n_total - n_monomeros_reales
 
     print(f"Cantidad monomeros: {n_monomeros}")
@@ -1190,9 +1189,6 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     # Polímero bond
     snap.bonds.N = n_enlaces
     snap.bonds.types = ['P-P']
-
-    partic_Polimero = snap.particles.types.index('P')
-    partic_Solvente = snap.particles.types.index('S')
 
     # Cuántas partículas caben en cada eje?
     # Tenemos un n_total
@@ -1284,12 +1280,12 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     return snap
 
 
-def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0):
+def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_SP=1.0):
     # --- Identificador para archivos ---
-    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}_mon"
+    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
 
     # Inicializar HOOMD con el snapshot
-    gpu = hoomd.device.CPU()
+    gpu = hoomd.device.GPU()
     sim = hoomd.Simulation(device=gpu, seed=42)
     sim.create_state_from_snapshot(snapshot)
     
@@ -1332,19 +1328,15 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0):
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
                                           hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(2)])       
+                                          hoomd.trigger.Periodic(50000)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
-                                 filename=f"traj_{file_id}.gsd",
+                                 filename=f"{file_id}_monom_{mon_cadena}.gsd",
                                  mode='wb') 
     
     sim.operations.writers.append(gsd_writer)
 
-    # Grabamos el primer Frame 
-    gsd_writer.write(sim.state, filename=f"traj_{file_id}.gsd")
-
     sim.run(equilibracion)
-
 
     sim.run(muestreo)
 
