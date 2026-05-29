@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import math
 import hoomd
 import gsd.hoomd
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 # from hoomd import deprecated
 
@@ -1171,13 +1171,18 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     # El espaciado entre partículas es el parámetro de red
     parametro_red = (1 / densidad_goticula) ** (1/3) 
 
-    L = volumen_gotícula ** (1/3)
+    L = volumen_gotícula ** (1/3) # L: Longitude la minibox de gotícula
 
     print(f"El parametro de red es: {parametro_red:.2f}")
     
-    lx, ly, lz = L, L, L
+    # Usamos el propio parámetro de red para separar un poco la minibox de la caja de simulación 
+    lx = aspect_ratio * L + 2 * parametro_red
+    ly = L + 2 * parametro_red
+    lz = L + 2 * parametro_red
 
-    snap.configuration.box = [lx*aspect_ratio, ly, lz, 0, 0, 0] # Se genera la caja alargada
+    # Configuramos la caja
+    snap.configuration.box = [lx, ly, lz, 0, 0, 0] # Se genera la caja alargada
+    print(f"Lx={lx:.2f}, Ly={ly:.2f}, Lz={lz:.2f}")
 
     snap.particles.N = n_total
     snap.particles.types = ['S', 'P'] # Solvente, Polímero
@@ -1189,93 +1194,92 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     partic_Polimero = snap.particles.types.index('P')
     partic_Solvente = snap.particles.types.index('S')
 
+    # Cuántas partículas caben en cada eje?
+    # Tenemos un n_total
+    n_p_eje = int(np.ceil(n_total ** (1/3))) # Al ser un cúbo debe de haber los mismos en cada eje 
 
-    # Cuntas partículas caben a lo largo de los lados
-    n_p_yz = int(np.round(L / parametro_red))
-    offset_yz = (L - (n_p_yz - 1) * parametro_red) / 2
-    coords_yz = np.linspace(-L/2 + offset_yz, L/2 - offset_yz, num=n_p_yz)
-
-    sitios_por_plano = n_p_yz * n_p_yz
-    n_p_x_necesarios = int(np.ceil(n_total / sitios_por_plano))
-
-    # Nos aseguramos de que el eje X sea lo suficientemente largo para el polímero actual
-    n_p_x = max(n_p_x_necesarios, monomeros_en_polimero)
-
-    # En X le damos a la gotícula un margen extra basado en el polímero más largo,
-    # pero asegurándonos de que siga siendo más pequeña que la caja total (lx * aspect_ratio)
-    # Elegimos el valor máximo entre el tamaño estándar L o la longitud del polímero
-    L_goticula_x = (n_p_x - 1) * parametro_red
-
-    # Validamos que la gotícula en X no supere los límites físicos de la caja alargada de HOOMD
-    if L_goticula_x > (lx * aspect_ratio):
-        L_goticula_x = lx * aspect_ratio - (2 * parametro_red)
-
-    n_p_x = int(np.round(L_goticula_x / parametro_red)) * int(parametro_red * 2)
-    offset_x = (L_goticula_x - (n_p_x - 1) * parametro_red) / 2
-    coords_x = np.linspace(-L_goticula_x/2, L_goticula_x/2, num=n_p_x)
-
-    # Generamos la matriz 3D  
-    PX, PY, PZ = np.meshgrid(coords_x, coords_yz, coords_yz, indexing='xy')
-    todos_los_sitios = np.vstack([PX.ravel(), PY.ravel(), PZ.ravel()]).T
-
-
+    print(f"El total de partículas es: {n_total}")
+    print(f"Caben {n_p_eje} partículas por eje")
+   
+    # Considerando que todo está centrado en el origen
+    coord_x = np.linspace(start=-L/2, stop=L/2, num=(n_p_eje)) # Tratamos de poner las partículas perdidas elongando el eje x
+    coord_yz = np.linspace(start=-L/2, stop=L/2, num=n_p_eje)
     
-    if n_p_x < monomeros_en_polimero:
-        raise RuntimeError(
-            f"El tamaño del eje X ({n_p_x} sitios) sigue siendo menor que el polímero ({monomeros_en_polimero}). "
-            "Considera aumentar el aspect_ratio o el volumen inicial del sistema."
-        )
+    Px, Py, Pz = np.meshgrid(coord_x, coord_yz, coord_yz, indexing='xy')
+    # Aplanamos las posiciones y transponemos las posiciones
+    posiciones = np.vstack([Px.ravel(), Py.ravel(), Pz.ravel()]).T
 
-    ocupado = np.zeros(len(todos_los_sitios), dtype=bool)
+    # Metemos aleatoriedad
+    np.random.seed(42)
+    np.random.shuffle(posiciones) # Tomamos diferentes posiciones al azar
 
-    # Iniciamos un contador de los enlaces entre monomeros
-    bond_counter = 0
-    sitio_siguiente = 0
+    # Recortamos el exceso de posiciones para tener exactamente n_total
+    posiciones = posiciones[:n_total]
 
-    # Acomodamos las partículas de polímeros en cadenas lineales
-    for i in range(n_polimeros):
-        start_i_monomer = i * monomeros_en_polimero # Buscamos cada inicio de polímero
+    print(f"Las posiciones son: {len(posiciones)}")
 
-        # Si el polímero actual no cabe en los sitios que quedan de la fila X actual,
-        # saltamos al inicio de la siguiente fila de la gotícula central
-        while (sitio_siguiente % n_p_x) + monomeros_en_polimero > n_p_x:
-            sitio_siguiente += (n_p_x - (sitio_siguiente % n_p_x))
+    # Asignamos las posiciones al snap
+    snap.particles.position[:] = posiciones
 
-        colocados = 0
-        while colocados < monomeros_en_polimero:
-            if sitio_siguiente >= len(todos_los_sitios):
-                raise RuntimeError("Sin sitios libres para el polímero")
+    # AHORA REVISARÉMOS LAS QUE HAYAN QUEDADO CERCA PARA ENLAZARLAS Y CONSTRUIR POLÍMEROS 
+    arbo_espacial = KDTree(posiciones) # Generamos el arbol
+
+    # Generamos los identificadores de cada tipo de partícula
+    id_S = snap.particles.types.index('S') # Solvente
+    id_P = snap.particles.types.index('P') # Polímero (Monómero del polímero técnicamente)
+    snap.particles.typeid[:] = id_S # Asignamos todas por defecto a Solvente
+
+    # Necesitamos llevar control de partículas ya enlazadas
+    particulas_usadas = set()
+    enlaces = []
+
+    # Ahora recorremos todas las partículas hasta alcanzar la cantidad de polímeros que deberíamos de tener
+    for _ in range(n_polimeros):
+        # Buscamos una semilla inicia (partícula que inicia el polímero)
+        semilla = False 
+        for particula in range(n_total): # Recorremos todas las partículas
+            if particula not in particulas_usadas:
+                semilla = particula # Encontramos una partícula para convertila en semilla 
+                break
             
-            if not ocupado[sitio_siguiente]:
-                idx_particula = start_i_monomer + colocados
-                snap.particles.position[idx_particula] = todos_los_sitios[sitio_siguiente]
-                snap.particles.typeid[idx_particula] = partic_Polimero
-                ocupado[sitio_siguiente] = True
+        if semilla is None:
+            break # En caso de no encontrar partícula
 
-                if colocados > 0:
-                    snap.bonds.group[bond_counter] = [idx_particula -1, idx_particula]
-                    snap.bonds.typeid[bond_counter] = 0
-                    bond_counter += 1
-                
-                colocados += 1
+        # Convertimos esta semilla en la primer partícula para el polímero 
+        snap.particles.typeid[semilla] = id_P
+        particulas_usadas.add(semilla) # La agregamos las que ya están usadas 
 
-            sitio_siguiente += 1
+        # Comenzamos a elongar el polímero 
+        particula_actual = semilla
+        for _ in range(monomeros_en_polimero - 1):
+            pos_actual = posiciones[particula_actual] # Tomamos la posicion de la partícula 
 
+            # Buscamos las partículas más cercanas a esta y sacamos su distancia
+            distancia, indices_vecinos = arbo_espacial.query(pos_actual, k=15) # Buscamos 15 partículas cercanas
 
-    sitios_libres = np.where(~ocupado)[0]
+            particula_siguiente = None # Comenzaremos a construir los enlaces 
+            for vecina in indices_vecinos:
+                if vecina != particula_actual and vecina not in particulas_usadas:
+                    particula_siguiente = vecina # Verificamos que la vecina no sea la misma partícula no se encuentre usada
+                    break
 
-    if len(sitios_libres) < n_solvente:
-        raise RuntimeError(
-            f"Sin sitios para solvente: {len(sitios_libres)} libres, {n_solvente} necesarios"
-        )
-    
-    for s in range(n_solvente):
-        idx = n_monomeros_reales + s
-        snap.particles.position[idx] = todos_los_sitios[sitios_libres[s]]
-        snap.particles.typeid[idx] = partic_Solvente
-        
-    print(f"Frame creado: {n_polimeros} polímeros, {n_solvente} solvente")
+            # Agregamos el enlace 
+            enlaces.append([particula_actual, particula_siguiente])
 
+            # Convertimos las vecinos a Polímero 
+            snap.particles.typeid[particula_siguiente] = id_P
+            particulas_usadas.add(particula_siguiente)
+
+            # Avanzamos a la siguiente partícula 
+            particula_actual = particula_siguiente
+
+    # Guardamos los enlaces gee=nerados 
+    snap.bonds.group[:] = enlaces
+    snap.bonds.typeid[:] = [0] * len(enlaces) # Todos pertenecen al tipo P-P
+
+    print(f"Polímeros generados: {n_polimeros} de tamaño {monomeros_en_polimero}")
+    print(f"Total de monómeros 'P' asignados: {list(snap.particles.typeid).count(id_P)}")
+    print(f"Total de solventes 'S' restantes: {list(snap.particles.typeid).count(id_S)}")
   
     return snap
 
@@ -1285,7 +1289,7 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, eps_SP=1.0):
     file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}_mon"
 
     # Inicializar HOOMD con el snapshot
-    gpu = hoomd.device.GPU()
+    gpu = hoomd.device.CPU()
     sim = hoomd.Simulation(device=gpu, seed=42)
     sim.create_state_from_snapshot(snapshot)
     
