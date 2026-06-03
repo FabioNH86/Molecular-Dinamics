@@ -14,7 +14,7 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 8
+num_prueba = 9
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
@@ -23,15 +23,15 @@ lista_eps_SP = [1.0]  # Diferentes afinidades solvente-polímero
 
 # Configuración del polímero y solvente
 monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
-n_monomeros_totales = 12000  # Total de monómeros en el sistema (ajustar según tu simulación)
+n_monomeros_totales = 120  # Total de monómeros en el sistema (ajustar según tu simulación)
 
 
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 
 # Parámetros de tiempo de simulación
-pasos_equil = int(5e5)
-pasos_muestreo = int(1e6)
+pasos_equil = int(5)
+pasos_muestreo = int(5)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")
@@ -61,13 +61,13 @@ try:
                 os.chdir(os.path.join(directorio_original, ruta_base))
                 try:
                     # Llamamos a las funciones 
-                    snapshot = crear_primer_frame(densidad_goticula=0.3,
-                                        aspect_ratio=4,
+                    snapshot_1 = crear_primer_frame(densidad_goticula=0.3,
+                                        aspect_ratio=1,
                                         concentracion_porcentual_monomeros=1.0,
                                         n_monomeros=n_monomeros_totales,
                                         monomeros_en_polimero=n_monomeros)
                     
-                    correr_simulacion(snapshot=snapshot,  
+                    correr_simulacion(snapshot=snapshot_1,  
                                       temp=temperatura,
                                       equilibracion=pasos_equil, 
                                       muestreo=pasos_muestreo,

@@ -1285,18 +1285,19 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
     file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
 
     # Inicializar HOOMD con el snapshot
-    gpu = hoomd.device.GPU()
+    gpu = hoomd.device.CPU()
     sim = hoomd.Simulation(device=gpu, seed=42)
     sim.create_state_from_snapshot(snapshot)
+    print(snapshot.configuration.box)
     
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
     mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
+    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
@@ -1317,18 +1318,21 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
 
     # Logger de datos termodinámicos (parecido a todo.dat)
     logger = hoomd.logging.Logger(categories=['scalar'])
-    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])  
 
-    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
+
+
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(2),
                               logger=logger,
-                              output=open(f"log_{file_id}_monom_{mon_cadena}.csv", 'w'))       
+                              output=open(f"log_{file_id}_monom_{mon_cadena}.dat", 'w'))       
     
     sim.operations.writers.append(table)
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
                                           hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(50000)])       
+                                          hoomd.trigger.On(2),
+                                          hoomd.trigger.Periodic(1)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=f"{file_id}_monom_{mon_cadena}.gsd",
@@ -1337,6 +1341,16 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
     sim.operations.writers.append(gsd_writer)
 
     sim.run(equilibracion)
+
+    new_box = snapshot.configuration.box = [2.0 * 37.18712209790537, 37.18712209790537, 37.18712209790537, 0.0, 0.0, 0.0]
+
+    sim.state.set_box(box=new_box)
+    print(f"Cambio de box: \n{snapshot.configuration.box}")
+
+    # energy_operation = hoomd.update.CustomUpdater(trigger=2)
+    # sim.operations += energy_operation
+
+
 
     sim.run(muestreo)
 
