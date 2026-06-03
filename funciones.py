@@ -1321,7 +1321,7 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
 
     table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
                               logger=logger,
-                              output=open(f"log_{file_id}.csv", 'w'))       
+                              output=open(f"log_{file_id}_monom_{mon_cadena}.csv", 'w'))       
     
     sim.operations.writers.append(table)
 

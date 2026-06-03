@@ -18,7 +18,8 @@ num_prueba = 8
 
 # Parámetros del sistema a explorar
 temperaturas = [0.7, 0.9, 1.1]
-lista_eps_SP = [0.1, 1.0]  # Diferentes afinidades solvente-polímero
+lista_eps_SP = [1.0]  # Diferentes afinidades solvente-polímero
+# Ya se corrió 0.1
 
 # Configuración del polímero y solvente
 monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
