@@ -14,15 +14,15 @@ Mayo 2026
 """
 
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
-num_prueba = 9
+num_prueba = 10
 
 # Parámetros del sistema a explorar
-temperaturas = [0.7, 0.9, 1.1]
-lista_eps_SP = [1.0]  # Diferentes afinidades solvente-polímero
+temperaturas = [0.5]
+lista_eps_SP = [0.1]  # Diferentes afinidades solvente-polímero
 # Ya se corrió 0.1
 
 # Configuración del polímero y solvente
-monomeros_por_polimero = [8, 16, 24]  # Número de monómeros por cadena polimérica
+monomeros_por_polimero = [8, 24]  # Número de monómeros por cadena polimérica
 n_monomeros_totales = 120  # Total de monómeros en el sistema (ajustar según tu simulación)
 
 
@@ -31,7 +31,7 @@ ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 
 # Parámetros de tiempo de simulación
 pasos_equil = int(5)
-pasos_muestreo = int(5)
+pasos_muestreo = int(10)
 
 total_simulaciones = len(temperaturas) * len(lista_eps_SP) * len(monomeros_por_polimero)
 print(f"Se realizarán un total de {total_simulaciones} simulaciones :)")
@@ -65,7 +65,7 @@ try:
                                         aspect_ratio=1,
                                         concentracion_porcentual_monomeros=1.0,
                                         n_monomeros=n_monomeros_totales,
-                                        monomeros_en_polimero=n_monomeros)
+                                        grado_polimerizacion=n_monomeros)
                     
                     correr_simulacion(snapshot=snapshot_1,  
                                       temp=temperatura,

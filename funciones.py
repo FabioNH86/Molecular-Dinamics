@@ -1145,7 +1145,305 @@ def run_sim_binary_sistem(temp, equilibracion, muestreo, eps_AB=1.0, sist_homege
     print(f'Simulación finalizada ✅\n')
 
 
-def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
+def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, grado_polimerizacion, tipos_solventes=2, n_monomeros=12_000):   
+    snap = hoomd.Snapshot()
+    snap.configuration.step = 1
+
+    # Calculamos cuántos monómeros y polímeros necesitamos
+    n_solvente_aprox      = int(((100/concentracion_porcentual_monomeros) - 1) * n_monomeros)
+    n_total               = n_solvente_aprox + n_monomeros  
+    n_polimeros           = n_monomeros // grado_polimerizacion
+    n_enlaces             = n_polimeros * (grado_polimerizacion - 1) 
+    n_monomeros_reales    = n_polimeros * grado_polimerizacion
+    n_solvente_total      = n_total - n_monomeros_reales
+
+    # Agregamos algún tipo de solvente diferente
+    n_solvente_1          = int(n_solvente_total / tipos_solventes)
+    n_solvente_2          = n_solvente_total - n_solvente_1
+
+    print(f"Cantidad monomeros: {n_monomeros}")
+    print(f"Cantidad part. solvente: {n_solvente_total}")
+    print(f"({int(tipos_solventes)} solventes, en proporciones iguales)")
+    print(f"Concentración {(n_monomeros / n_total * 100):.2f}")
+   
+    # Comenzamos con una caja cúbica en el centro del sistema
+    volumen_gotícula = n_total / densidad_goticula
+
+    print(f"El volumen de la caja es: {volumen_gotícula:.2f}")
+
+    # Parámetro de red 
+    # El espaciado entre partículas es el parámetro de red
+    parametro_red = (1 / densidad_goticula) ** (1/3) 
+
+    L = volumen_gotícula ** (1/3) # L: Longitude la minibox de gotícula
+
+    print(f"El parametro de red es: {parametro_red:.2f}")
+    
+    # Usamos el propio parámetro de red para separar un poco la minibox de la caja de simulación 
+    lx = aspect_ratio * L + 2 * parametro_red
+    ly = L + 2 * parametro_red
+    lz = L + 2 * parametro_red
+
+    # Configuramos la caja
+    snap.configuration.box = [lx, ly, lz, 0, 0, 0] # Se genera la caja alargada
+    print(f"Lx={lx:.2f}, Ly={ly:.2f}, Lz={lz:.2f}")
+
+    snap.particles.N = n_total
+    snap.particles.types = ['S1', 'S2', 'A', 'B', 'C'] # Solvente (S1, S2), Polímero (A, B, C)
+    snap.particles.mass[:] = [1.0] * n_total
+    # Polímero bond
+    snap.bonds.N = n_enlaces
+    snap.bonds.types = ['A-A', 'A-B', 'B-B', 'B-C', 'C-C']
+
+    # Cuántas partículas caben en cada eje?
+    # Tenemos un n_total
+    n_p_eje = int(np.ceil(n_total ** (1/3))) # Al ser un cúbo debe de haber los mismos en cada eje 
+
+    print(f"El total de partículas es: {n_total}")
+    print(f"Caben {n_p_eje} partículas por eje")
+   
+    # Considerando que todo está centrado en el origen
+    coord_x = np.linspace(start=-L/2, stop=L/2, num=(n_p_eje + 4)) # Tratamos de poner las partículas perdidas elongando el eje x
+    coord_yz = np.linspace(start=-L/2, stop=L/2, num=n_p_eje)
+    
+    Px, Py, Pz = np.meshgrid(coord_x, coord_yz, coord_yz, indexing='xy')
+    # Aplanamos las posiciones y transponemos las posiciones
+    posiciones = np.vstack([Px.ravel(), Py.ravel(), Pz.ravel()]).T
+
+    # Checamos que las posiciones estén del lado izquierdo o derecho
+    lado_izquierdo = posiciones[:, 0] < 0 
+    lado_derecho = posiciones[:, 0] >= 0
+
+    # Asignamos cada grupo a un lado 
+    posiciones_izq = posiciones[lado_izquierdo]
+    posiciones_der = posiciones[lado_derecho]
+
+    # Metemos aleatoriedad
+    np.random.seed(42)
+    np.random.shuffle(posiciones_izq) # Tomamos diferentes posiciones al azar
+    np.random.shuffle(posiciones_der)
+
+    # Divimos la cantidad de partículas entre la cantidad de solvente
+    n_lado = n_total // 2
+
+    particulas_izq = posiciones_izq[:n_lado]
+    particulas_der = posiciones_der[:n_lado]
+
+    if n_total % 2 != 0:
+        particulas_der = posiciones_der[:n_lado + 1]
+
+
+    # Jusntamos ambos lados
+    posiciones = np.vstack([particulas_izq, particulas_der])
+
+    print(f"Las posiciones totales generadas son: {len(posiciones)} (Izq: {len(particulas_izq)}, Der: {len(particulas_der)})")
+    
+    # Asignamos las posiciones al snap
+    snap.particles.position[:] = posiciones
+
+    # AHORA REVISARÉMOS LAS QUE HAYAN QUEDADO CERCA PARA ENLAZARLAS Y CONSTRUIR POLÍMEROS 
+    arbo_espacial = KDTree(posiciones) # Generamos el arbol
+
+    # Generamos los identificadores de cada tipo de partícula
+    id_S1 = snap.particles.types.index('S1') # Solvente tipo 1
+    id_S2 = snap.particles.types.index('S2') # Solvente tipo 2
+    id_A  = snap.particles.types.index('A')
+    id_B  = snap.particles.types.index('B')
+    id_C  = snap.particles.types.index('C')
+
+    # Creamos un diccionario con los tipos de enlaces para los monomeros del polimero
+    mapa_enlaces = {
+        ('A', 'A'): snap.bonds.types.index('A-A'), 
+        ('A', 'B'): snap.bonds.types.index('A-B'),
+        ('B', 'B'): snap.bonds.types.index('B-B'), 
+        ('B', 'C'): snap.bonds.types.index('B-C'),
+        ('C', 'C'): snap.bonds.types.index('C-C')  
+    }
+
+    tipos_iniciales = np.empty(n_total)
+
+    # Como 'posiciones' se construyó apilando [particulas_izq, particulas_der]:
+    tipos_iniciales[:n_lado] = id_S1  # La mitad izquierda nace siendo Solvente 1
+    tipos_iniciales[n_lado:] = id_S2  # La mitad derecha nace siendo Solvente 2
+
+    snap.particles.typeid[:] = tipos_iniciales # Asignamos todas por defecto a Solvente tipo 1
+
+    # Necesitamos llevar control de partículas ya enlazadas
+    particulas_usadas = set()
+    enlaces = []
+    tipos_enlaces = []
+
+    # Debemos dividir el polímero en el número de bloques de cada tipo de monómero
+    bloque_monom = grado_polimerizacion // 3
+    primer_seccion = bloque_monom
+    segunda_seccion = 2*bloque_monom
+    # tercer_seccion = 3*bloque_monom
+
+    # Ahora recorremos todas las partículas hasta alcanzar la cantidad de polímeros que deberíamos de tener
+    for _ in range(n_polimeros):
+        # Buscamos una semilla inicia (partícula que inicia el polímero)
+        semilla = False 
+        for particula in range(n_total): # Recorremos todas las partículas
+            if particula not in particulas_usadas:
+                semilla = particula # Encontramos una partícula para convertila en semilla 
+                break
+            
+        if semilla is None:
+            break # En caso de no encontrar partícula
+
+        tipo_actual = 'A' # El polímero siempre comienza con el tipo A
+        # Convertimos esta semilla en la primer partícula para el polímero 
+        snap.particles.typeid[semilla] = id_A
+        particulas_usadas.add(semilla) # La agregamos las que ya están usadas 
+
+        # Comenzamos a elongar el polímero 
+        particula_actual = semilla
+        for i in range(grado_polimerizacion - 1):
+            # Recorremos el polímero asignando un tipo de monómero dependiendo de su posición
+            # dependiento de su unicación dentro del polímero
+            if i < primer_seccion:
+                tipo_siguiente = 'A'
+            elif i < segunda_seccion:
+                tipo_siguiente = 'B'
+            else:
+                tipo_siguiente = 'C'
+
+
+            pos_actual = posiciones[particula_actual] # Tomamos la posicion de la partícula 
+
+            # Buscamos las partículas más cercanas a esta y sacamos su distancia
+            distancia, indices_vecinos = arbo_espacial.query(pos_actual, k=15) # Buscamos 15 partículas cercanas
+
+            particula_siguiente = None # Comenzaremos a construir los enlaces 
+            for vecina in indices_vecinos:
+                if vecina != particula_actual and vecina not in particulas_usadas:
+                    particula_siguiente = vecina # Verificamos que la vecina no sea la misma partícula no se encuentre usada
+                    break
+
+            if particula_siguiente is None:
+                break # Evitamos romper el código si se encierra espacialmente
+
+            # Agregamos el enlace 
+            enlaces.append([particula_actual, particula_siguiente])
+
+            id_enlace = mapa_enlaces.get((tipo_actual, tipo_siguiente), 0)
+            tipos_enlaces.append(id_enlace)
+
+            # Convertimos las vecinos a Polímero 
+            # Agregamos ya con los tipos asignados
+            snap.particles.typeid[particula_siguiente] = snap.particles.types.index(tipo_siguiente)
+            particulas_usadas.add(particula_siguiente)
+
+            # Avanzamos a la siguiente partícula 
+            particula_actual = particula_siguiente
+            tipo_actual = tipo_siguiente
+
+    # Guardamos los enlaces generados 
+    snap.bonds.group[:] = enlaces
+    snap.bonds.typeid[:] = tipos_enlaces
+
+    # Impresión de control para verificar que las proporciones sean correctas
+    print(f"\nPolímeros generados: {n_polimeros} de tamaño {grado_polimerizacion}")
+    print("--- Conteo Final de Partículas en el Sistema ---")
+    for t in snap.particles.types:
+        conteo = list(snap.particles.typeid).count(snap.particles.types.index(t))
+        print(f"  Tipo {t}: {conteo}")
+  
+    return snap
+
+
+def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, aspect_ratio, eps_SP=1.0):
+    # --- Identificador para archivos ---
+    file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
+
+    # Inicializar HOOMD con el snapshot
+    gpu = hoomd.device.CPU()
+    sim = hoomd.Simulation(device=gpu, seed=42)
+    sim.create_state_from_snapshot(snapshot)
+    print(f"La conf. inicial de la caja es: \n{snapshot.configuration.box}")
+    
+    sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
+
+    cell = hoomd.md.nlist.Cell(buffer=0.4)
+    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
+
+    mie.params[('S1', 'S1')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S2', 'S2')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S1', 'S2')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+
+    mie.params[('A', 'A')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('B', 'B')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('C', 'C')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+
+    mie.params[('A', 'B')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('B', 'C')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('A', 'C')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
+
+    mie.params[('S1', 'A')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S1', 'B')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S1', 'C')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+
+    mie.params[('S2', 'A')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S2', 'B')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S2', 'C')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+
+    # Fuerza de enlace para mantener la integridad de los polímeros
+    armonico = hoomd.md.bond.Harmonic()
+    armonico.params['A-A', 'A-B', 'B-B', 'B-C', 'C-C'] = dict(k=10.0, r0=1.0)
+    
+
+    # -- Integrador y termostato del ensamble NVT --
+    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+
+
+    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[mie, armonico])
+    sim.operations.integrator = integrator
+
+    # -- Loggers (Muestra de la información) --
+    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
+    sim.operations.computes.append(thermo)
+
+    # Logger de datos termodinámicos (parecido a todo.dat)
+    logger = hoomd.logging.Logger(categories=['scalar'])
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])  
+
+
+
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(1000),
+                              logger=logger,
+                              output=open(f"log_{file_id}_monom_{mon_cadena}.dat", 'w'))       
+    
+    sim.operations.writers.append(table)
+
+    # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
+    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
+                                          hoomd.trigger.On(1),
+                                          hoomd.trigger.On(2),
+                                          hoomd.trigger.Periodic(2)])       
+    
+    gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
+                                 filename=f"{file_id}_monom_{mon_cadena}.gsd",
+                                 mode='wb') 
+    
+    sim.operations.writers.append(gsd_writer)
+
+    sim.run(equilibracion)
+    box = snapshot.configuration.box # Accedo a la configuración de la caja actual
+
+    new_box = snapshot.configuration.box = [aspect_ratio * box[0], box[1], box[2], 0.0, 0.0, 0.0] # Altero la configuración de la caja en el muestreo
+
+    sim.state.set_box(box=new_box)
+    print(f"Se estriró la caja a: \n{snapshot.configuration.box}")
+
+    # energy_operation = hoomd.update.CustomUpdater(trigger=2)
+    # sim.operations += energy_operation
+
+
+
+    sim.run(muestreo)
+
+def crear_primer_frame_homopolimero(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
     snap = hoomd.Snapshot()
     snap.configuration.step = 1
 
@@ -1280,24 +1578,23 @@ def crear_primer_frame(densidad_goticula, aspect_ratio, concentracion_porcentual
     return snap
 
 
-def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_SP=1.0):
+def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_cadena, aspect_ratio, eps_SP=1.0):
     # --- Identificador para archivos ---
     file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
 
     # Inicializar HOOMD con el snapshot
-    gpu = hoomd.device.CPU()
+    gpu = hoomd.device.GPU()
     sim = hoomd.Simulation(device=gpu, seed=42)
     sim.create_state_from_snapshot(snapshot)
-    print(snapshot.configuration.box)
     
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
     mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12.0, m=6.0)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12.0, m=6.0)
+    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
+    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
@@ -1318,21 +1615,18 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
 
     # Logger de datos termodinámicos (parecido a todo.dat)
     logger = hoomd.logging.Logger(categories=['scalar'])
-    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])  
+    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
 
-
-
-    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(2),
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
                               logger=logger,
-                              output=open(f"log_{file_id}_monom_{mon_cadena}.dat", 'w'))       
+                              output=open(f"log_{file_id}_monom_{mon_cadena}.csv", 'w'))       
     
     sim.operations.writers.append(table)
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
                                           hoomd.trigger.On(1),
-                                          hoomd.trigger.On(2),
-                                          hoomd.trigger.Periodic(1)])       
+                                          hoomd.trigger.Periodic(5000)])       
     
     gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
                                  filename=f"{file_id}_monom_{mon_cadena}.gsd",
@@ -1342,15 +1636,11 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, eps_S
 
     sim.run(equilibracion)
 
-    new_box = snapshot.configuration.box = [2.0 * 37.18712209790537, 37.18712209790537, 37.18712209790537, 0.0, 0.0, 0.0]
+    box = snapshot.configuration.box # Accedo a la configuración de la caja actual
+
+    new_box = snapshot.configuration.box = [aspect_ratio * box[0], box[1], box[2], 0.0, 0.0, 0.0] # Altero la configuración de la caja en el muestreo
 
     sim.state.set_box(box=new_box)
-    print(f"Cambio de box: \n{snapshot.configuration.box}")
-
-    # energy_operation = hoomd.update.CustomUpdater(trigger=2)
-    # sim.operations += energy_operation
-
-
+    print(f"Se estriró la caja a: \n{snapshot.configuration.box}")
 
     sim.run(muestreo)
-

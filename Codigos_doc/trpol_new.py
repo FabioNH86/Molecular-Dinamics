@@ -58,7 +58,7 @@ else:
 
    molecules = [polymer,solvent]
 
-   system =deprecated.init.create_random_polymers(box=data.boxdim(Lx=box_side, Ly=box_side, Lz=box_side),polymers=molecules, separation=dict(A=0.1, B=0.1, S=0.1));
+   system = deprecated.init.create_random_polymers(box=data.boxdim(Lx=box_side, Ly=box_side, Lz=box_side),polymers=molecules, separation=dict(A=0.1, B=0.1, S=0.1));
 
    # Bonded interactions for freely jointed chain
    harmonic = md.bond.harmonic()

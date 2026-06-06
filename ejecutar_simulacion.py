@@ -1,6 +1,6 @@
 import os
 import sys
-from funciones import crear_primer_frame, correr_simulacion
+from funciones import crear_primer_frame_homopolimero, correr_simulacion_homoplimero
 
 """
 Script preparado para recibir parámetros desde Bash.
@@ -32,26 +32,27 @@ try:
     os.chdir(os.path.join(directorio_original, ruta_base))
     
     # Parámetros de tiempo
-    pasos_equil = int(5e5)
+    pasos_equil = int(2.5e5)
     pasos_muestreo = int(1e6)
     
     # Generar Snapshot
-    snapshot = crear_primer_frame(
+    snapshot = crear_primer_frame_homopolimero(
         densidad_goticula=0.3,
-        aspect_ratio=4,
+        aspect_ratio=1,
         concentracion_porcentual_monomeros=1.0,
         n_monomeros=n_monomeros_totales,
         monomeros_en_polimero=n_monomeros
     )
     
     # Ejecutar en HOOMD
-    correr_simulacion(
+    correr_simulacion_homoplimero(
         snapshot=snapshot,  
         temp=temperatura,
         equilibracion=pasos_equil, 
         muestreo=pasos_muestreo,
         eps_SP=eps,
-        mon_cadena=n_monomeros
+        mon_cadena=n_monomeros,
+        aspect_ratio=2
     )
     print(f"✅ ¡Simulación finalizada con éxito para T={temperatura}, N={n_monomeros}!")
 
