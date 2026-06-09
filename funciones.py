@@ -1657,20 +1657,28 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
     
     original_box = sim.state.box
-    new_Lx = original_box.Lx * aspect_ratio
-    new_Ly = original_box.Ly + 0.1
-    new_Lz = original_box.Lz + 0.1
 
-    new_box = hoomd.Box(
-        Lx=new_Lx,
-        Ly=new_Ly,
-        Lz=new_Lz,
-        xy=original_box.xy,
-        xz=original_box.xz,
-        yz=original_box.yz
-    )
 
-    sim.state.set_box(box=new_box)
+# Revisamos si la caja ya viene estirada o no 
+    if original_box.Lx > 100.0:
+        print(f"📦 El GSD ya cuenta con la caja estirada ([{original_box.Lx:.2f}, {original_box.Ly:.2f}, {original_box.Lz:.2f}]). Reanudando directo...")
+    else:
+        print("📦 El GSD tiene la caja chica del equilibrio. Aplicando estiramiento controlado...")
+        new_Lx = original_box.Lx * aspect_ratio
+        new_Ly = original_box.Ly + 0.1
+        new_Lz = original_box.Lz + 0.1
+
+        new_box = hoomd.Box(
+            Lx=new_Lx,
+            Ly=new_Ly,
+            Lz=new_Lz,
+            xy=original_box.xy,
+            xz=original_box.xz,
+            yz=original_box.yz
+        )
+
+        sim.state.set_box(box=new_box)
+        print(f"Se estriró la caja a: \n{[new_box.Lx, new_box.Ly, new_box.Lz]}")
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
     mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
@@ -1718,6 +1726,5 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     sim.operations.writers.append(gsd_writer)
 
     # sim.run(equilibracion)
-    print(f"Se estriró la caja a: \n{[new_box.Lx, new_box.Ly, new_box.Lz]}")
 
     sim.run(muestreo)
