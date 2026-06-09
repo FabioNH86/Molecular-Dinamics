@@ -16,7 +16,7 @@ num_prueba = int(sys.argv[1])
 eps = float(sys.argv[2])
 temperatura = float(sys.argv[3])
 n_monomeros = int(sys.argv[4])
-n_monomeros_totales = 12000
+n_monomeros_totales = 2400
 
 ruta_base = f"Resultados/HOOMD/P{num_prueba}_Polimero_Solvente"
 directorio_original = os.getcwd()
@@ -37,7 +37,7 @@ try:
     
     # Generar Snapshot
     snapshot = crear_primer_frame_homopolimero(
-        densidad_goticula=0.3,
+        densidad_goticula=0.6,
         aspect_ratio=1,
         concentracion_porcentual_monomeros=1.0,
         n_monomeros=n_monomeros_totales,
@@ -52,7 +52,7 @@ try:
         muestreo=pasos_muestreo,
         eps_SP=eps,
         mon_cadena=n_monomeros,
-        aspect_ratio=2
+        aspect_ratio=2.0
     )
     print(f"✅ ¡Simulación finalizada con éxito para T={temperatura}, N={n_monomeros}!")
 
