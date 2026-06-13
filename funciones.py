@@ -705,6 +705,82 @@ def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):
     return centros_x, perfil_promedio, desviacion_estandar
 
 
+def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=0, num_bines=100):
+    """
+    Calcula el perfil de densidad a lo largo del eje X para múltiples especies.
+    
+    Parameters:
+    -----------
+    gsd_file : str
+        Ruta al archivo .gsd
+    tipos_interes : list of str
+        Lista con los nombres de los tipos de partículas a separar (ej. ['A', 'B'] o ['solvente', 'polimero']).
+    start_frame : int
+        Índice del frame inicial.
+    num_bines : int
+        Número de divisiones en el eje X.
+    """
+    with gsd.hoomd.open(name=gsd_file, mode='r') as trayecto:
+        snap_ref = trayecto[0]
+        lx, ly, lz = snap_ref.configuration.box[0:3]
+        
+        # Mapear los nombres de los tipos ('solvente', 'polimero') a sus IDs numéricos (0, 1, etc.)
+        nombres_tipos = snap_ref.particles.types
+        mapa_tipos = {nombre: i for i, nombre in enumerate(nombres_tipos)}
+        
+        # Validar que los tipos pedidos existan en el GSD
+        for tipo in tipos_interes:
+            if tipo not in mapa_tipos:
+                raise ValueError(f"El tipo '{tipo}' no se encuentra en el archivo GSD. Tipos disponibles: {nombres_tipos}")
+        
+        volumen_bin = (lx / num_bines) * ly * lz
+        cortes_x = np.linspace(-lx/2, lx/2, num_bines + 1)
+        centros_x = (cortes_x[:-1] + cortes_x[1:]) / 2
+        
+        # Inicializar diccionarios para guardar los datos de cada frame por especie
+        historial_densidades = {tipo: [] for tipo in tipos_interes}
+        
+        total_frames = len(trayecto)
+        print(f"Procesando {total_frames - start_frame} frames para las especies: {tipos_interes}...")
+
+        for i in range(start_frame, total_frames):
+            snap = trayecto[i]
+            
+            # 1. Centrado usando el centro de masa de TODAS las partículas (para mantener el mismo sistema de referencia)
+            pos_x_todas = snap.particles.position[:, 0]
+            centro_masa = np.mean(pos_x_todas)
+            x_centrado_todas = ((pos_x_todas - centro_masa + lx/2) % lx) - lx/2
+            
+            # 2. Separar por especie usando el typeid
+            typeids = snap.particles.typeid
+            
+            for tipo in tipos_interes:
+                id_numerico = mapa_tipos[tipo]
+                # Filtro: solo las posiciones X de la especie actual
+                x_especie = x_centrado_todas[typeids == id_numerico]
+                
+                # Histograma para esta especie
+                counts, _ = np.histogram(x_especie, bins=cortes_x)
+                densidades_por_bin = counts / volumen_bin
+                historial_densidades[tipo].append(densidades_por_bin)
+
+            if i % 10 == 0:
+                print(f"Frame procesado: {i}/{total_frames}", end="\r")
+
+        # 3. Procesamiento estadístico por especie
+        resultados = {}
+        for tipo in tipos_interes:
+            df_densidades = pd.DataFrame(historial_densidades[tipo])
+            resultados[tipo] = {
+                'promedio': df_densidades.mean(),
+                'desviacion': df_densidades.std()
+            }
+        
+        print("\n✅ Cálculo completado con éxito.")
+        
+    return centros_x, resultados
+
+
 def encontrar_equilibrio_hoomd(archivo_csv, pasos_totales, ancho_bloques=10, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
     """
     Analiza el archivo CSV de HOOMD para encontrar el paso donde las energías se estabilizan.
