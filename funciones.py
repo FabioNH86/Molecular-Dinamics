@@ -7,6 +7,8 @@ import math
 import hoomd
 import gsd.hoomd
 from scipy.spatial import KDTree
+from scipy.spatial.distance import pdist 
+
 
 # from hoomd import deprecated
 
@@ -1519,6 +1521,7 @@ def correr_simulacion(snapshot, temp, equilibracion, muestreo, mon_cadena, aspec
 
     sim.run(muestreo)
 
+
 def crear_primer_frame_homopolimero(densidad_goticula, aspect_ratio, concentracion_porcentual_monomeros, monomeros_en_polimero, n_monomeros=12_000):   
     snap = hoomd.Snapshot()
     snap.configuration.step = 1
@@ -1804,3 +1807,44 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     # sim.run(equilibracion)
 
     sim.run(muestreo)
+
+
+def calcular_radio_giro_promedio(trayectoria, longitud_cadenas, dimensiones_caja):
+    """
+    Calcula el radio de giro promedio (Rg) usando la fórmula de distancias por pares.
+
+    """
+    num_frames, num_monomeros, _ = trayectoria.shape
+    # Determainamos cuántos polímeros hay dentro de la simulación
+    num_cadenas = num_monomeros // longitud_cadenas 
+    
+    rg_por_frame = []
+
+    for f in range(num_frames):
+        # Obtenemos las coordenadas de los monómeros en cada frame
+        coordenadas_frame = trayectoria[f]
+
+        # Extraemos las dimensiones de la caja de simulación
+        L = dimensiones_caja[f]
+
+        # Calculamos el radio de giro para cada cadena
+        for c in range(num_cadenas):
+            inicio_cadena = c * longitud_cadenas
+            fin_cadena = inicio_cadena + longitud_cadenas
+            coordenadas_cadena = coordenadas_frame[inicio_cadena:fin_cadena]
+
+            suma_distancias_cuadrado = 0.0
+            for i in range(longitud_cadenas):
+                for j in range(i+1, longitud_cadenas):
+                    # (Ri - Rj)
+                    dr = coordenadas_cadena[i] - coordenadas_cadena[j]
+
+                    # Corregimos la diferencia de distancias si la cadena cruza la caja de simulación
+                    dr = dr - L * np.round(dr/L)
+                    suma_distancias_cuadrado += np.sum(dr**2)
+
+            rg_cuadrado = suma_distancias_cuadrado / (longitud_cadenas**2)
+            # Guardamos los Rg en una lista
+            rg_por_frame.append(np.sqrt(rg_cuadrado))
+   
+    return np.mean(rg_por_frame), np.std(rg_por_frame), rg_por_frame
