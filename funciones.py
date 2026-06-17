@@ -1711,6 +1711,11 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
                                  filename=f"{file_id}_monom_{mon_cadena}.gsd",
                                  mode='wb') 
     
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    term_log.add(sim, quantities=['timestep', 'tps'])
+    term_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5), logger=term_log)
+    sim.operations.writers.append(term_writter)
+    
     sim.operations.writers.append(gsd_writer)
 
     sim.run(equilibracion)
