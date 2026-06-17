@@ -1777,7 +1777,9 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     
 
     # -- Integrador y termostato del ensamble NVT --
-    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    # termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    termostato = hoomd.md.methods.thermostats.MTTK(kT=temp, tau=0.2)
+
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
 
 
