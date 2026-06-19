@@ -1773,7 +1773,7 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
         print(f"Se estriró la caja a: \n{[new_box.Lx, new_box.Ly, new_box.Lz]}")
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
-    lj = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
+    lj = hoomd.md.pair.LJ(nlist=cell, default_r_cut=4.0, mode='shift')
 
     lj.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0)
     lj.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
