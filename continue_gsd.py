@@ -1,91 +1,86 @@
 import hoomd
+import numpy as np
+import gsd.hoomd
+
 
 temp = 0.65
 eps_SP = 1.00
-archivo_gsd = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}_monom_24"
+archivo_gsd = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}_monom_24.gsd"
 file_id = f"Poly-Solv_T{temp:.2f}_epsSP{eps_SP:.2f}"
 aspect_ratio = 2
 mon_cadena = 24
 muestreo = 1_000_000
 
-# Inicializar HOOMD con el snapshot
-gpu = hoomd.device.GPU()
-sim = hoomd.Simulation(device=gpu, seed=42)
-sim.create_state_from_gsd(archivo_gsd, frame=-1)
-    
-sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
-    
-original_box = sim.state.box
 
 
-# Revisamos si la caja ya viene estirada o no 
-if original_box.Lx > 100.0:
-    print(f"📦 El GSD ya cuenta con la caja estirada ([{original_box.Lx:.2f}, {original_box.Ly:.2f}, {original_box.Lz:.2f}]). Reanudando directo...")
-else:
-    print("📦 El GSD tiene la caja chica del equilibrio. Aplicando estiramiento controlado...")
-    new_Lx = original_box.Lx * aspect_ratio
-    new_Ly = original_box.Ly + 0.1
-    new_Lz = original_box.Lz + 0.1
+rho = 0.3
+natoms = 240_000
+num_monomeros = 2
 
-    new_box = hoomd.Box(
-        Lx=new_Lx,
-        Ly=new_Ly,
-        Lz=new_Lz,
-        xy=original_box.xy,
-        xz=original_box.xz,
-        yz=original_box.yz
-    )
+# Creating the set of atom coordinates and types
+frame = gsd.hoomd.Frame()
+frame.particles.N = natoms
+frame.particles.types = ['S', 'P']
 
-    sim.state.set_box(box=new_box)
-    print(f"Se estriró la caja a: \n{[new_box.Lx, new_box.Ly, new_box.Lz]}")
+frame.bonds.types = ['P-P']
 
-    cell = hoomd.md.nlist.Cell(buffer=0.4)
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
+# Computing the number of atoms per species
+N_a = num_monomeros
+N_b = natoms - num_monomeros
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
+types = []
 
-    # Fuerza de enlace para mantener la integridad de los polímeros
-    armonico = hoomd.md.bond.Harmonic()
-    armonico.params['P-P'] = dict(k=10.0, r0=1.0)
-    
+        
 
-    # -- Integrador y termostato del ensamble NVT --
-    # termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
-    termostato = hoomd.md.methods.thermostats.MTTK(kT=temp, tau=0.2)
+#print(types)
 
-    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+# Creating particle coordinates
+N_tot = natoms
+N_x = int(np.cbrt(N_tot))
+N_y = N_x
+N_z = N_x
+a_param = (1.0/rho)**(1.0/3.0)
+L_x = N_x * a_param
+L_y = N_y * a_param
+L_z = N_z * a_param
+
+pos = []
+bonds = []
+enlace = 0.2
+part_id = 0
+
+for i in range(N_x):
+   for j in range(N_y):
+      for k in range(N_z):
+         x = i*a_param - (0.5*L_x)
+         y = j*a_param - (0.5*L_y)
+         z = k*a_param - (0.5*L_z)
+         types.append(0)
 
 
-    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[mie, armonico])
-    sim.operations.integrator = integrator
+         monomer_id = part_id
+         part_id += 1
+         pos.append([x, y, z])
 
-    # -- Loggers (Muestra de la información) --
-    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
-    sim.operations.computes.append(thermo)
+         if len(bonds) < 1:
+            if np.random.rand() < 0.10:
+                    x_comomer = x + enlace
+                    y_comomer = y
+                    z_comomer = z
 
-    # Logger de datos termodinámicos (parecido a todo.dat)
-    logger = hoomd.logging.Logger(categories=['scalar'])
-    logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
+                    pos.append([x_comomer, y_comomer, z_comomer])
+                    comomer_id = part_id
+                    types.append(1)
+                    part_id += 1
 
-    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
-                              logger=logger,
-                              output=open(f"log_{file_id}_monom_{mon_cadena}.csv", mode='a'))       
-    
-    sim.operations.writers.append(table)
+                    bonds.append([monomer_id, comomer_id])
 
-    # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
-    trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),
-                                          hoomd.trigger.On(1),
-                                          hoomd.trigger.Periodic(5000)])       
-    
-    gsd_writer = hoomd.write.GSD(trigger=trigger_combinado,
-                                 filename=f"{file_id}_monom_{mon_cadena}.gsd",
-                                 mode='ab') 
-    
-    sim.operations.writers.append(gsd_writer)
+frame.bonds.N = len(bonds)
+frame.particles.typeid = types
+frame.bonds.group[:] = np.array(bonds)
+frame.particles.position = pos
+frame.configuration.box = [L_x, L_y, L_z, 0, 0, 0]
+f = gsd.hoomd.open(name='file_bin.gsd', mode='w')
+f.append(frame)
 
-    # sim.run(equilibracion)
 
-    sim.run(muestreo)

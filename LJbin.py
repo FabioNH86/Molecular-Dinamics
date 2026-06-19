@@ -20,7 +20,7 @@ print('==========================================================')
 print('Reading a GSD file')
    
 # Restart the simulation from previous state
-sim.create_state_from_gsd(filename="config.gsd")
+sim.create_state_from_gsd(filename="file_bin.gsd")
 
 # Neighbor list param
 nl = hoomd.md.nlist.Cell(buffer=0.4)
@@ -49,7 +49,7 @@ logger.add(sim, quantities=['timestep'])
 logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure', 'pressure_tensor'])
 
 # Output file for thermodynamic properties
-table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(1_000), logger=logger, output=open(output_file, 'w'))
+table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(100), logger=logger, output=open(output_file, 'w'))
 
 sim.operations.writers.append(table)
 

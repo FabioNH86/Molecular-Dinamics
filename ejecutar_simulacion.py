@@ -32,8 +32,8 @@ try:
     os.chdir(os.path.join(directorio_original, ruta_base))
         
     # Parámetros de tiempo
-    pasos_equil = int(2e5)
-    pasos_muestreo = int(1e6)
+    pasos_equil = int(0)
+    pasos_muestreo = int(5e5)
 
     # Agregamos los nombres de los archivos que ya deberían estar creados
     file_id = f"Poly-Solv_T{temperatura:.2f}_epsSP{eps:.2f}"

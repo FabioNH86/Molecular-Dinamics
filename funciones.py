@@ -724,6 +724,7 @@ def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=
     """
     with gsd.hoomd.open(name=gsd_file, mode='r') as trayecto:
         snap_ref = trayecto[0]
+        print(f'Timestep inicial: {snap_ref.configuration.step}')        
         lx, ly, lz = snap_ref.configuration.box[0:3]
         
         # Mapear los nombres de los tipos ('solvente', 'polimero') a sus IDs numéricos (0, 1, etc.)
@@ -914,7 +915,7 @@ def leer_csv_seguro(archivo_csv):
         return None
     
 
-def encontrar_equilibrio_hoomd(archivo_csv, pasos_totales=1000000, ancho_bloques=100, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
+def encontrar_equilibrio_hoomd(archivo_csv, pasos_totales=1000000, ancho_bloques=500, variacion_permitida=0.03, fraccion_cola=0.2, mostrar_progreso=True):
     try:
         # 1. Leer con manejo de espacios
         df = pd.read_csv(archivo_csv, sep=r'\s+', engine='python')
@@ -1669,11 +1670,12 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
     sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
+    lj = hoomd.md.pair.LJ(nlist=cell, default_r_cut=4.0, mode='shift')
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
+    lj.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0)
+    lj.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
+    lj.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
+
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
@@ -1681,11 +1683,11 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
     
 
     # -- Integrador y termostato del ensamble NVT --
-    termostato = hoomd.md.methods.thermostats.Bussi(kT=temp, tau=0.01)
+    termostato = hoomd.md.methods.thermostats.MTTK(kT=temp, tau=0.01)
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
 
 
-    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[mie, armonico])
+    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[lj, armonico])
     sim.operations.integrator = integrator
 
     # -- Loggers (Muestra de la información) --
@@ -1715,6 +1717,12 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
     term_log.add(sim, quantities=['timestep', 'tps'])
     term_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5), logger=term_log)
     sim.operations.writers.append(term_writter)
+
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    term_log.add(sim, quantities=['timestep', 'tps'])
+    term_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000), logger=term_log)
+    sim.operations.writers.append(term_writter)
+
     
     sim.operations.writers.append(gsd_writer)
 
@@ -1765,11 +1773,11 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
         print(f"Se estriró la caja a: \n{[new_box.Lx, new_box.Ly, new_box.Lz]}")
 
     cell = hoomd.md.nlist.Cell(buffer=0.4)
-    mie = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
+    lj = hoomd.md.pair.Mie(nlist=cell, default_r_cut=4.0, mode='shift')
 
-    mie.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0, n=12, m=6)
-    mie.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0, n=12, m=6)
+    lj.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0)
+    lj.params[('P', 'P')] = dict(epsilon=1.0, sigma=1.0)
+    lj.params[('S', 'P')] = dict(epsilon=eps_SP, sigma=1.0)
 
     # Fuerza de enlace para mantener la integridad de los polímeros
     armonico = hoomd.md.bond.Harmonic()
@@ -1783,7 +1791,7 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
 
 
-    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[mie, armonico])
+    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[lj, armonico])
     sim.operations.integrator = integrator
 
     # -- Loggers (Muestra de la información) --
@@ -1794,11 +1802,18 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     logger = hoomd.logging.Logger(categories=['scalar'])
     logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
 
-    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(10000),
+    table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
                               logger=logger,
                               output=open(f"log_{file_id}_monom_{mon_cadena}.csv", mode='a'))       
     
     sim.operations.writers.append(table)
+
+    # Send the logger outputs to the terminal
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    term_log.add(sim, quantities=['timestep', 'tps'])
+    term_writer = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000), logger=term_log)
+    sim.operations.writers.append(term_writer)
+
 
     # Para poder guardar la primer configuración en el gsd y ver cómo se acomodaron las partículas
     trigger_combinado = hoomd.trigger.Or([hoomd.trigger.On(0),

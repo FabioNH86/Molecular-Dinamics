@@ -6,9 +6,9 @@
 NUM_PRUEBA=12
 
 # Configuración de arreglos (espacios como separadores)
-LISTA_EPS=(1.0)
+LISTA_EPS=(1.0 0.5)
 TEMPERATURAS=(0.60) # CAMBIAR ESTO EN LA OTRA PC (Correr a 0.65)
-MONOMEROS_POR_POLIMERO=(8 16 24)
+MONOMEROS_POR_POLIMERO=(8 16 24) # Debemos estirar hasta 2.5 M para estraer info. Termodinámica
 
 # Calcular total de simulaciones
 TOTAL_SIM=$(( ${#LISTA_EPS[@]} * ${#TEMPERATURAS[@]} * ${#MONOMEROS_POR_POLIMERO[@]} ))
