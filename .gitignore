@@ -23,4 +23,13 @@ mie_isotermas
 hoomd_env
 funciones_sim.py
 sim_simple.py
-Poly-Solv_T0.65_epsSP1.00_monom_24.gsd
+continue_gsd.py
+correr_simulacion.py
+file_bin.gsd
+file_bin_fabio.gsd
+file_bin_monom_2.gsd
+log_file_bin_monom_2.csv
+movie.gsd
+primer_frame.py
+restart.gsd
+simpleLJ.log
