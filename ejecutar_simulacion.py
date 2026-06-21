@@ -33,7 +33,7 @@ try:
         
     # Parámetros de tiempo
     pasos_equil = int(0)
-    pasos_muestreo = int(5e5)
+    pasos_muestreo = int(3e6)
 
     # Agregamos los nombres de los archivos que ya deberían estar creados
     file_id = f"Poly-Solv_T{temperatura:.2f}_epsSP{eps:.2f}"
