@@ -724,7 +724,8 @@ def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=
     """
     with gsd.hoomd.open(name=gsd_file, mode='r') as trayecto:
         snap_ref = trayecto[0]
-        print(f'Timestep inicial: {snap_ref.configuration.step}')        
+        segundo_frame = trayecto[1]
+        print(f'Cada frame tiene: {segundo_frame.configuration.step} pasos')        
         lx, ly, lz = snap_ref.configuration.box[0:3]
         
         # Mapear los nombres de los tipos ('solvente', 'polimero') a sus IDs numéricos (0, 1, etc.)
@@ -1828,7 +1829,14 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
 
     # sim.run(equilibracion)
 
-    sim.run(muestreo)
+    # sim.run(muestreo)
+    pasos_restantes = muestreo - sim.timestep
+    if pasos_restantes > 0:
+        sim.run(pasos_restantes)
+        if pasos_restantes % 10_000 == 0:
+            print(f'Quedan: {int(pasos_restantes)} pasos')
+    else:
+        print(f"Aviso: La simulación ya está en el paso {sim.timestep}, no se avanzó.")
 
 
 def calcular_radio_giro_promedio(trayectoria, longitud_cadenas, dimensiones_caja):
