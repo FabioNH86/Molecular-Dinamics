@@ -2070,15 +2070,17 @@ def correr_simulacion_solvente(snapshot, temp, equilibracion, muestreo, aspect_r
     # --- Logger: escalares + tensor de presión ---
     # El tensor de presión es categoría 'sequence', necesita logger separado
     logger_scalar = hoomd.logging.Logger(categories=['scalar'])
+    logger_scalar.add(sim, quantities=['timestep'])
     logger_scalar.add(thermo, quantities=[
         'potential_energy',
         'kinetic_energy',
         'kinetic_temperature',
         'pressure',
+        'pressure_tensor'
     ])
 
-    logger_tensor = hoomd.logging.Logger(categories=['sequence'])
-    logger_tensor.add(thermo, quantities=['pressure_tensor'])
+    # logger_tensor = hoomd.logging.Logger(categories=['sequence'])
+    # logger_tensor.add(thermo, quantities=['pressure_tensor'])
 
     # Escritura de escalares en CSV
     table_scalar = hoomd.write.Table(
@@ -2089,12 +2091,12 @@ def correr_simulacion_solvente(snapshot, temp, equilibracion, muestreo, aspect_r
     sim.operations.writers.append(table_scalar)
 
     # Escritura del tensor de presión en archivo separado
-    table_tensor = hoomd.write.Table(
-        trigger=hoomd.trigger.Periodic(10_000),
-        logger=logger_tensor,
-        output=open(f"log_{file_id}_pressure_tensor.csv", 'w'),
-    )
-    sim.operations.writers.append(table_tensor)
+    # table_tensor = hoomd.write.Table(
+    #     trigger=hoomd.trigger.Periodic(5000),
+    #     logger=logger_tensor,
+    #     output=open(f"log_{file_id}_pressure_tensor.csv", 'w'),
+    # )
+    # sim.operations.writers.append(table_tensor)
 
     # --- GSD ---
     trigger_combinado = hoomd.trigger.Or([
