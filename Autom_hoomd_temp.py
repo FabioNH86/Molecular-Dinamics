@@ -18,7 +18,7 @@ Abril 2026
 # -- SEÑALA EL NÚMERO DE ENSAYO QUE HARÁS PARA ALMACENAR LOS RESULTADOS EN SU CARPETA CORRESPONDIENTE --
 num_prueba = 7
 
-temperaturas = [1.20]
+temperaturas = [0.65]
 lista_partículas = [
     [64, 45, 25] # 77325 partículas 
 ]

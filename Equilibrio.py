@@ -22,7 +22,7 @@ temperaturas_originales = [1.20]
 temperaturas = [T for T in temperaturas_originales if T != 0.95] # Se omite la temperatura con error
 
 
-ruta_comun = f'Resultados/P{num_prueba}_LV_Mie'
+ruta_comun = f'/run/media/fabio-noriega/Almacen_Fabio/Simulaciones/Resultados/P{num_prueba}_LV_Mie'
 
 for T in temperaturas:
     nombre_carpeta = f"T={T:.2f}"

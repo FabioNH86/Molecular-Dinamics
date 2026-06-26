@@ -22,8 +22,8 @@ num_bines = 100 # Establece el número de fracciones en que se dividirá la caja
 start_frame = 10  # Ajustar según cuándo empiece el equilibrio en tus GSD
 
 # -- VALORES REPORTADOS POR LA NIST
-# nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, *, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
 # nist_rho_l = [8.643e-01, 8.426e-01, 8.203e-01, 7.970e-01, 7.728e-01, 7.474e-01, 7.203e-01, *, 6.592e-01, 6.233e-01, 5.807e-01, 5.238e-01, 4.367e-01]
+# nist_rho_v = [8.450e-04, 1.828e-03, 3.508e-03, 6.146e-03, 1.004e-02, 1.553e-02, 2.304e-02, *, 4.664e-02, 6.489e-02, 9.047e-02, 1.310e-01, 2.047e-01]
 
 nist_rho_v = [8.450e-04, 3.508e-03, 1.004e-02, 2.304e-02, 4.664e-02, 9.047e-02, 2.047e-01]
 nist_rho_l = [8.643e-01, 8.203e-01, 7.728e-01, 7.203e-01, 6.592e-01, 5.807e-01, 4.367e-01]

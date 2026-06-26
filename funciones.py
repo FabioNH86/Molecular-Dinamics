@@ -430,7 +430,71 @@ def calcular_presiones_vapor(archivo, configuraciones_consideradas=500000, eje_p
     print(f'La presión de vapor promedio es: {presión_vapor:.4f}')
     print(f'Con una desviación estándar de: {p_desv_estand:.4f}')
 
-    return presiones, presión_vapor
+    return presiones, presión_vapor, p_desv_estand
+
+
+def calcular_presion_vapor_hoomd(archivo, Lx, eje_normal='x', configuraciones_consideradas=None):
+    try:
+        df = pd.read_csv(archivo)
+        print(f"Trabajando en: {archivo}")
+        print(f'Frames totales: {len(df)}')
+
+    except FileNotFoundError:
+        print(f"No se encontró el archivo: {archivo}")
+        return None, None
+    
+    df = df.dropna() # Sacanos los frames que hayan tenido NAN
+
+    if configuraciones_consideradas is not None:
+        df = df.tail(configuraciones_consideradas) # Nos desplazamos a las configuraciones que vamos a muestrear
+
+    print(f"-> Frames para promediar: {len(df)}")
+
+    # --- Presiones normales y tangenciales según el eje normal a la interfaz ---
+    if eje_normal == 'x':
+        P_normal     = df['Pxx']
+        P_tangencial = (df['Pyy'] + df['Pzz']) / 2.0
+        Lx_col       = None  # Lx no está en el CSV, se pasa aparte si se necesita
+    elif eje_normal == 'y':
+        P_normal     = df['Pyy']
+        P_tangencial = (df['Pxx'] + df['Pzz']) / 2.0
+    elif eje_normal == 'z':
+        P_normal     = df['Pzz']
+        P_tangencial = (df['Pxx'] + df['Pyy']) / 2.0
+    else:
+        raise ValueError(f"eje_normal debe ser 'x', 'y' o 'z', no '{eje_normal}'")
+
+    presion_vapor = P_normal.mean()
+    presion_vapor_std = P_normal.std()
+
+    # Calculamos la presión tangencial promedio
+    presion_tang = P_tangencial.mean()
+    presion_tang_std = P_tangencial.std()
+
+    presion_total = (df['Pxx'] + df['Pyy'] + df['Pzz']).mean() / 3.0
+
+    print(f"\n  P_normal  ({eje_normal})   : {presion_vapor:.6f} ± {presion_vapor_std:.6f}")
+    print(f"  P_tangencial             : {presion_tang:.6f}  ± {presion_tang_std:.6f}")
+    print(f"  P_isotropica (traza/3)   : {presion_total:.6f}")
+
+    resultados = {
+        'P_normal_mean' : presion_vapor,
+        'P_normal_std'  : presion_vapor_std,
+        'P_tangencial_mean': presion_tang,
+        'P_tangencial_std': presion_tang_std,
+        'P_isotropca'   : presion_total,
+        'n_frames'      : len(df)
+    }
+
+    # Calculamos de una vez la tension superficial
+    tension_serie = (Lx / 2.0) * (P_normal - P_tangencial)
+
+    tension_superficial_media = tension_serie.mean()
+    tension_superficial_std = tension_serie.std()
+
+    return df, resultados, tension_superficial_media, tension_superficial_std
+
+
 
 
 def graficar_evolucion_presion(df_presiones):
@@ -454,14 +518,22 @@ def graficar_evolucion_presion(df_presiones):
 
 
 def calcular_tension_superficial(df_presiones, longitud_partpendicular_interface):
-    presion_x = df_presiones['x'].mean()
-    presion_y = df_presiones['y'].mean()
-    presion_z = df_presiones['z'].mean()
-
-    factor_presiones = presion_x - 0.5 * (presion_y + presion_y)
-    tension_superficial = (longitud_partpendicular_interface / 2) * factor_presiones
-
-    print(f'La tensión superficial es: {tension_superficial:.4f}')
+    print(f'Se tienen {len(df_presiones)} frames')
+    # 1. Calculamos la tensión instantánea completa
+    P_tangencial_serie = 0.5 * (df_presiones['y'] + df_presiones['z'])
+    tension_instantanea = (longitud_partpendicular_interface / 2) * (df_presiones['x'] - P_tangencial_serie)
+    
+    # 2. Recortamos la serie para ignorar el inicio usando iloc
+    tension_estabilizada = tension_instantanea.iloc[:]
+    
+    # 3. Extraemos los estadísticos solo de la zona estable
+    tension_superficial_media = tension_estabilizada.mean()
+    tension_superficial_std   = tension_estabilizada.std()
+    
+    print(f"Frames usados para el promedio: {len(tension_estabilizada)}")
+    print(f"La tensión superficial es: {tension_superficial_media:.4f} ± {tension_superficial_std:.4f}")
+    
+    return tension_superficial_media, tension_superficial_std
 
 
 def generar_dataframes_todo(archivo):
@@ -526,13 +598,13 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
         lx = ly = lz = L
 
     else:
-        lx, ly, lz = 100.0, 50.0, 50.0
+        lx, ly, lz = 48.92, 24.46, 24.46
         ndiv = ndiv_entrada
         n_total = ndiv[0] * ndiv[1] * ndiv[2]
 
         # Cálculo de espaciado #== Se centran las partículas en un rectángulo interior. ==
-        ly_minibox = 50.0
-        lz_minibox = 50.0
+        ly_minibox = 24
+        lz_minibox = 24
 
         dx = length_minibox / ndiv[0]
         dy = ly_minibox / ndiv[1]
@@ -624,6 +696,11 @@ def run_hoomd_simulation(temp, ruta_destino, length_minibox, equilibracion, mues
                                  mode='wb')
     
     sim.operations.writers.append(gsd_writer)
+
+    terminal_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    terminal_log.add(sim, quantities=['timestep', 'tps'])
+    terminal_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5_000), logger=terminal_log)
+    sim.operations.writers.append(terminal_writter)
     
     zero_momentum = hoomd.md.update.ZeroMomentum(trigger=hoomd.trigger.Periodic(periodic_zeromomentum))
     
@@ -667,6 +744,7 @@ def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):
         num_atom = snap_ref.particles.N
         
         print(f"Dimensiones de la caja: Lx={lx:.4f}, Ly={ly:.4f}, Lz={lz:.4f}")
+        print(f'Con un total de {num_atom} partículas')
         
         volumen_bin = (lx / num_bines) * ly * lz
         cortes_x = np.linspace(-lx/2, lx/2, num_bines + 1)
@@ -707,7 +785,7 @@ def calcular_perfil_densidad_gsd(gsd_file, start_frame=0, num_bines=100):
     return centros_x, perfil_promedio, desviacion_estandar
 
 
-def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=0, num_bines=100):
+def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=0, num_bines=50):
     """
     Calcula el perfil de densidad a lo largo del eje X para múltiples especies.
     
@@ -727,6 +805,7 @@ def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=
         segundo_frame = trayecto[1]
         print(f'Cada frame tiene: {segundo_frame.configuration.step} pasos')        
         lx, ly, lz = snap_ref.configuration.box[0:3]
+        print(f'La longitud de la caja es: {lx}')
         
         # Mapear los nombres de los tipos ('solvente', 'polimero') a sus IDs numéricos (0, 1, etc.)
         nombres_tipos = snap_ref.particles.types
@@ -781,7 +860,16 @@ def calcular_perfil_densidad_multi_especie(gsd_file, tipos_interes, start_frame=
             }
         
         print("\n✅ Cálculo completado con éxito.")
-        
+        # print("RRESULTADOS")
+        # print("-" * 40)
+        # for tipo in tipos_interes:
+        #     # Calculamos la densidad media total promediando todos los bines
+        #     densidad_liquido = resultados[tipo]['promedio'].max()
+        #     densidad_vapor = resultados[tipo]['promedio'].min()
+        #     print(f"  -> Especie '{tipo}': Densidad de líquido = {densidad_liquido:.5f}")
+        #     print(f"  -> Especie '{tipo}': Densidad de vapor = {densidad_vapor:.5f}")
+        # print("-" * 40)
+    
     return centros_x, resultados
 
 
@@ -1714,10 +1802,6 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
                                  filename=f"{file_id}_monom_{mon_cadena}.gsd",
                                  mode='wb') 
     
-    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
-    term_log.add(sim, quantities=['timestep', 'tps'])
-    term_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5), logger=term_log)
-    sim.operations.writers.append(term_writter)
 
     term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
     term_log.add(sim, quantities=['timestep', 'tps'])
@@ -1831,10 +1915,9 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
 
     # sim.run(muestreo)
     pasos_restantes = muestreo - sim.timestep
+    
     if pasos_restantes > 0:
         sim.run(pasos_restantes)
-        if pasos_restantes % 10_000 == 0:
-            print(f'Quedan: {int(pasos_restantes)} pasos')
     else:
         print(f"Aviso: La simulación ya está en el paso {sim.timestep}, no se avanzó.")
 
@@ -1878,3 +1961,175 @@ def calcular_radio_giro_promedio(trayectoria, longitud_cadenas, dimensiones_caja
             rg_por_frame.append(np.sqrt(rg_cuadrado))
    
     return np.mean(rg_por_frame), np.std(rg_por_frame), rg_por_frame
+
+def procesar_datos_termo(archivo_csv):
+    """
+    Lee un archivo CSV de HOOMD de forma robusta y extrae el timestep y la energía potencial.
+    Devuelve un diccionario con los vectores listos para graficar y el nombre corto del archivo.
+    """
+    try:
+        # 1. Carga con el separador correcto
+        df = pd.read_csv(archivo_csv, sep=r'\s+', engine='python')
+        df.columns = df.columns.str.strip()
+        df = df.apply(pd.to_numeric, errors='coerce').dropna().reset_index(drop=True)
+        
+        # 2. Identificación del Timestep
+        cols_step = [c for c in df.columns if 'step' in c.lower()]
+        if cols_step:
+            step = df[cols_step[0]].to_numpy()
+        else:
+            # Reconstrucción si no existe la columna
+            step = (df.index * 10000).to_numpy()
+        
+        # 3. Identificación de la Energía Potencial
+        col_pe = [c for c in df.columns if 'potential' in c.lower()][0]
+        pe = df[col_pe].to_numpy()
+        
+        nombre_corto = os.path.basename(archivo_csv).replace('.csv', '')
+        
+        return {
+            'nombre': nombre_corto,
+            'step': step,
+            'pe': pe
+        }
+        
+    except Exception as e:
+        print(f"❌ Error al procesar {os.path.basename(archivo_csv)}: {e}")
+        return None
+    
+def crear_primer_frame_solvente(densidad, aspect_ratio, n_particulas=240_000):
+    snap = hoomd.Snapshot()
+    snap.configuration.step = 1
+
+    # Volumen y parámetro de red
+    volumen = n_particulas / densidad
+    parametro_red = (1 / densidad) ** (1/3)
+    L = volumen ** (1/3)
+
+    print(f"Cantidad de partículas solvente: {n_particulas}")
+    print(f"Volumen de la caja: {volumen:.2f}")
+    print(f"Parámetro de red: {parametro_red:.2f}")
+
+    lx = aspect_ratio * L + 2 * parametro_red
+    ly = L + 2 * parametro_red
+    lz = L + 2 * parametro_red
+
+    snap.configuration.box = [lx, ly, lz, 0, 0, 0]
+    print(f"Lx={lx:.2f}, Ly={ly:.2f}, Lz={lz:.2f}")
+
+    snap.particles.N = n_particulas
+    snap.particles.types = ['S']
+    snap.particles.mass[:] = [1.0] * n_particulas
+    snap.bonds.N = 0
+    snap.bonds.types = []
+
+    # Grid cúbico de posiciones
+    n_p_eje = int(np.ceil(n_particulas ** (1/3)))
+    print(f"Partículas por eje: {n_p_eje}")
+
+    coord_x  = np.linspace(-L/2, L/2, n_p_eje)
+    coord_yz = np.linspace(-L/2, L/2, n_p_eje)
+
+    Px, Py, Pz = np.meshgrid(coord_x, coord_yz, coord_yz, indexing='xy')
+    posiciones = np.vstack([Px.ravel(), Py.ravel(), Pz.ravel()]).T
+
+    np.random.seed(42)
+    np.random.shuffle(posiciones)
+    posiciones = posiciones[:n_particulas]
+
+    snap.particles.position[:] = posiciones
+    snap.particles.typeid[:] = [0] * n_particulas  # Todas son 'S'
+
+    print(f"Posiciones asignadas: {len(posiciones)}")
+    return snap
+
+
+def correr_simulacion_solvente(snapshot, temp, equilibracion, muestreo, aspect_ratio):
+    file_id = f"Solv_T{temp:.2f}"
+
+    gpu = hoomd.device.GPU()
+    sim = hoomd.Simulation(device=gpu, seed=42)
+    sim.create_state_from_snapshot(snapshot)
+
+    sim.state.thermalize_particle_momenta(filter=hoomd.filter.All(), kT=temp)
+
+    cell = hoomd.md.nlist.Cell(buffer=0.4)
+    lj = hoomd.md.pair.LJ(nlist=cell, default_r_cut=4.0, mode='shift')
+    lj.params[('S', 'S')] = dict(epsilon=1.0, sigma=1.0)
+
+    termostato = hoomd.md.methods.thermostats.MTTK(kT=temp, tau=0.01)
+    nvt = hoomd.md.methods.ConstantVolume(filter=hoomd.filter.All(), thermostat=termostato)
+
+    integrator = hoomd.md.Integrator(dt=0.005, methods=[nvt], forces=[lj])
+    sim.operations.integrator = integrator
+
+    # --- Cómputos termodinámicos ---
+    thermo = hoomd.md.compute.ThermodynamicQuantities(filter=hoomd.filter.All())
+    sim.operations.computes.append(thermo)
+
+    # --- Logger: escalares + tensor de presión ---
+    # El tensor de presión es categoría 'sequence', necesita logger separado
+    logger_scalar = hoomd.logging.Logger(categories=['scalar'])
+    logger_scalar.add(thermo, quantities=[
+        'potential_energy',
+        'kinetic_energy',
+        'kinetic_temperature',
+        'pressure',
+    ])
+
+    logger_tensor = hoomd.logging.Logger(categories=['sequence'])
+    logger_tensor.add(thermo, quantities=['pressure_tensor'])
+
+    # Escritura de escalares en CSV
+    table_scalar = hoomd.write.Table(
+        trigger=hoomd.trigger.Periodic(5000),
+        logger=logger_scalar,
+        output=open(f"log_{file_id}.csv", 'w'),
+    )
+    sim.operations.writers.append(table_scalar)
+
+    # Escritura del tensor de presión en archivo separado
+    table_tensor = hoomd.write.Table(
+        trigger=hoomd.trigger.Periodic(10_000),
+        logger=logger_tensor,
+        output=open(f"log_{file_id}_pressure_tensor.csv", 'w'),
+    )
+    sim.operations.writers.append(table_tensor)
+
+    # --- GSD ---
+    trigger_combinado = hoomd.trigger.Or([
+        hoomd.trigger.On(0),
+        hoomd.trigger.On(1),
+        hoomd.trigger.Periodic(5000),
+    ])
+    gsd_writer = hoomd.write.GSD(
+        trigger=trigger_combinado,
+        filename=f"{file_id}.gsd",
+        mode='wb',
+    )
+    sim.operations.writers.append(gsd_writer)
+
+    # --- Logger de progreso en terminal ---
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    term_log.add(sim, quantities=['timestep', 'tps'])
+    term_writer = hoomd.write.Table(
+        trigger=hoomd.trigger.Periodic(5000),
+        logger=term_log,
+    )
+    sim.operations.writers.append(term_writer)
+
+    # --- Equilibración ---
+    sim.run(equilibracion)
+
+    # --- Estiramiento de caja para etapa de muestreo ---
+    box = sim.state.box  # Usamos sim.state.box, no el snapshot (ya puede estar desactualizado)
+    new_box = hoomd.Box(
+        Lx=aspect_ratio * box.Lx,
+        Ly=box.Ly,
+        Lz=box.Lz,
+    )
+    sim.state.set_box(box=new_box)
+    print(f"Caja estirada a: Lx={new_box.Lx:.2f}, Ly={new_box.Ly:.2f}, Lz={new_box.Lz:.2f}")
+
+    # --- Muestreo ---
+    sim.run(muestreo)
