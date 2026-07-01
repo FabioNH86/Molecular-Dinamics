@@ -1816,7 +1816,8 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
 
     pressure_tensor_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
                                                 logger=pressure_tensor_log,
-                                                output=f'{file_id}_mon_{mon_cadena}_PresTen.csv')
+                                                output=open(f'{file_id}_mon_{mon_cadena}_PresTen.csv', 'a')
+                                                )
 
     sim.operations.writers.append(pressure_tensor_writter)
 
@@ -1926,7 +1927,8 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
 
     pressure_tensor_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
                                                 logger=pressure_tensor_log,
-                                                output=f'{file_id}_mon_{mon_cadena}_PresTen.csv')
+                                                output=open(f'{file_id}_mon_{mon_cadena}_PresTen.csv', 'a')
+                                                )
 
     sim.operations.writers.append(pressure_tensor_writter)
 
