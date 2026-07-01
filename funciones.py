@@ -1814,12 +1814,16 @@ def correr_simulacion_homoplimero(snapshot, temp, equilibracion, muestreo, mon_c
     pressure_tensor_log = hoomd.logging.Logger(categories=['scalar'])
     pressure_tensor_log.add(thermo, quantities=['pressure_tensor'])
 
-    pressure_tensor_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
-                                                logger=pressure_tensor_log,
-                                                output=open(f'{file_id}_mon_{mon_cadena}_PresTen.csv', 'a')
-                                                )
 
-    sim.operations.writers.append(pressure_tensor_writter)
+    pressure_tensor_writer = hoomd.write.GSD(
+        trigger=hoomd.trigger.Periodic(5000),
+        filename=f'{file_id}_mon_{mon_cadena}_PresTen.gsd',
+        mode='ab',
+        filter=hoomd.filter.Null(),   # no guarda posiciones, solo el log
+        logger=pressure_tensor_log
+    )
+
+    sim.operations.writers.append(pressure_tensor_writer)
 
     sim.run(equilibracion)
 
@@ -1904,8 +1908,9 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     sim.operations.writers.append(table)
 
     # Send the logger outputs to the terminal
-    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string', 'sequence'])
     term_log.add(sim, quantities=['timestep', 'tps'])
+    term_log.add(thermo, quantities=['pressure_tensor'])
     term_writer = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000), logger=term_log)
     sim.operations.writers.append(term_writer)
 
@@ -1925,12 +1930,16 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     pressure_tensor_log = hoomd.logging.Logger(categories=['scalar'])
     pressure_tensor_log.add(thermo, quantities=['pressure_tensor'])
 
-    pressure_tensor_writter = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
-                                                logger=pressure_tensor_log,
-                                                output=open(f'{file_id}_mon_{mon_cadena}_PresTen.csv', 'a')
-                                                )
 
-    sim.operations.writers.append(pressure_tensor_writter)
+    pressure_tensor_writer = hoomd.write.GSD(
+        trigger=hoomd.trigger.Periodic(5000),
+        filename=f'{file_id}_mon_{mon_cadena}_PresTen.gsd',
+        mode='ab',
+        filter=hoomd.filter.Null(),   # no guarda posiciones, solo el log
+        logger=pressure_tensor_log
+    )
+
+    sim.operations.writers.append(pressure_tensor_writer)
 
     # sim.run(equilibracion)
 
