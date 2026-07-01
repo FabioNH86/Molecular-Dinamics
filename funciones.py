@@ -1908,9 +1908,8 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
     sim.operations.writers.append(table)
 
     # Send the logger outputs to the terminal
-    term_log = hoomd.logging.Logger(categories=['scalar', 'string', 'sequence'])
+    term_log = hoomd.logging.Logger(categories=['scalar', 'string'])
     term_log.add(sim, quantities=['timestep', 'tps'])
-    term_log.add(thermo, quantities=['pressure_tensor'])
     term_writer = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000), logger=term_log)
     sim.operations.writers.append(term_writer)
 
