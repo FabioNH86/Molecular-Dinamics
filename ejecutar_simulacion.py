@@ -32,8 +32,8 @@ try:
     os.chdir(os.path.join(directorio_original, ruta_base))
         
     # Parámetros de tiempo
-    pasos_equil = int(2.5e6)
-    pasos_muestreo = int(500_000)
+    pasos_equil = int(0)
+    pasos_muestreo = int(2.5e6)
 
     # Agregamos los nombres de los archivos que ya deberían estar creados
     file_id = f"Poly-Solv_T{temperatura:.2f}_epsSP{eps:.2f}"
@@ -49,7 +49,7 @@ try:
         continue_sim_from_gsd(
             archivo_gsd=fn_gsd,
             temp=temperatura,
-            pasos_muestreo=int(3e6),
+            muestreo=pasos_muestreo,
             eps_SP=eps,
             mon_cadena=n_monomeros,
             aspect_ratio=2.0,
