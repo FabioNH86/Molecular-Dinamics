@@ -6,7 +6,7 @@
 NUM_PRUEBA=14
 
 # Configuración de arreglos (espacios como separadores)
-LISTA_EPS=(0.25) # Solo alargarémos eps=0.5
+LISTA_EPS=(2.0) # Solo alargarémos eps=0.5
 TEMPERATURAS=(0.60) # CAMBIAR ESTO EN LA OTRA PC (Correr a 0.65)
 MONOMEROS_POR_POLIMERO=(8 16 24) # Debemos estirar hasta 2.5 M para estraer info. Termodinámica
 

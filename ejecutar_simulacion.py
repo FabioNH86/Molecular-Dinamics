@@ -53,7 +53,6 @@ try:
             eps_SP=eps,
             mon_cadena=n_monomeros,
             aspect_ratio=2.0,
-            pasos_equilibracion=pasos_equil
         )
         print(f"✅ ¡Simulación REANUDADA y finalizada con éxito para T={temperatura}, N={n_monomeros}!")
 
