@@ -1899,6 +1899,7 @@ def continue_sim_from_gsd(archivo_gsd, muestreo, temp, eps_SP, mon_cadena, aspec
 
     # Logger de datos termodinámicos (parecido a todo.dat)
     logger = hoomd.logging.Logger(categories=['scalar'])
+    logger.add(sim, quantities=['timestep'])
     logger.add(thermo, quantities=['potential_energy', 'kinetic_energy', 'kinetic_temperature', 'pressure'])    
 
     table = hoomd.write.Table(trigger=hoomd.trigger.Periodic(5000),
