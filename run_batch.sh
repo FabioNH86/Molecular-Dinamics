@@ -6,8 +6,8 @@
 NUM_PRUEBA=14
 
 # Configuración de arreglos (espacios como separadores)
-LISTA_EPS=(2.0) # Solo alargarémos eps=0.5
-TEMPERATURAS=(0.60) # CAMBIAR ESTO EN LA OTRA PC (Correr a 0.65)
+LISTA_EPS=(1.8 1.6) # En la PC del profe falcón correr a 1.4 y 1.2
+TEMPERATURAS=(0.60) 
 MONOMEROS_POR_POLIMERO=(8 16 24) # Debemos estirar hasta 2.5 M para estraer info. Termodinámica
 
 # Calcular total de simulaciones
