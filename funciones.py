@@ -495,8 +495,6 @@ def calcular_presion_vapor_hoomd(archivo, Lx, eje_normal='x', configuraciones_co
     return df, resultados, tension_superficial_media, tension_superficial_std
 
 
-
-
 def graficar_evolucion_presion(df_presiones):
     # Creamos una figura con 3 subgráficos verticales
     fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
@@ -1992,6 +1990,7 @@ def calcular_radio_giro_promedio(trayectoria, longitud_cadenas, dimensiones_caja
    
     return np.mean(rg_por_frame), np.std(rg_por_frame), rg_por_frame
 
+
 def procesar_datos_termo(archivo_csv):
     """
     Lee un archivo CSV de HOOMD de forma robusta y extrae el timestep y la energía potencial.
@@ -2026,6 +2025,7 @@ def procesar_datos_termo(archivo_csv):
     except Exception as e:
         print(f"❌ Error al procesar {os.path.basename(archivo_csv)}: {e}")
         return None
+
     
 def crear_primer_frame_solvente(densidad, aspect_ratio, n_particulas=240_000):
     snap = hoomd.Snapshot()
