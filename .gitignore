@@ -33,4 +33,4 @@ movie.gsd
 primer_frame.py
 restart.gsd
 simpleLJ.log
-
+*.gsd
